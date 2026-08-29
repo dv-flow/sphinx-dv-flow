@@ -216,3 +216,13 @@ __marimo__/
 # Streamlit
 .streamlit/secrets.toml
 
+
+# ---> sphinx-dv-flow
+# ivpm assembles dependency checkouts and the dev virtualenv here. It is
+# reproducible from ivpm.yaml, so it is not tracked.
+/packages/
+
+.agents/
+.claude/
+.codex/
+.cursor/

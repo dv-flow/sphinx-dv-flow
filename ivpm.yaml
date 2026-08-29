@@ -1,0 +1,20 @@
+package:
+  name: sphinx-dv-flow
+
+  dep-sets:
+  - name: use
+    deps: []
+
+  - name: dev
+    deps:
+    - name: sphinx
+      src: pypi
+    - name: sphinxcontrib-mermaid
+      src: pypi
+    - name: furo
+      src: pypi
+    - name: pytest
+      src: pypi
+    - name: dv-flow-mgr
+      dep-set: default-dev
+      url: https://github.com/dv-flow/dv-flow-mgr.git

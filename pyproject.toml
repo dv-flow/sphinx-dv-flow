@@ -1,0 +1,37 @@
+[build-system]
+requires = ["setuptools>=64", "setuptools-scm>=8"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "sphinx-dv-flow"
+dynamic = ["version"]
+description = "Sphinx support for documenting DV Flow workflows"
+readme = "README.md"
+requires-python = ">=3.9"
+license = {file = "LICENSE"}
+authors = [
+    {name = "Matthew Ballance", email = "matt.ballance@gmail.com"},
+]
+# `sphinx` is a hard dependency of the distribution because the Sphinx
+# extension is the point of it. It is deliberately NOT a dependency of the
+# `dv_flow.doc` import graph -- see tests/unit/test_no_sphinx_import.py.
+dependencies = [
+    "dv-flow-mgr",
+    "sphinx>=7",
+]
+
+[project.optional-dependencies]
+graphviz = ["graphviz"]
+test = ["pytest"]
+docs = ["furo", "sphinxcontrib-mermaid"]
+
+[project.scripts]
+dvflow-doc = "dv_flow.doc.cli:main"
+
+[tool.setuptools_scm]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+# `dv_flow` is an implicit namespace package shared with dv-flow-mgr, so it
+# must not be listed and must never gain an __init__.py.
+include = ["dv_flow.*", "sphinx_dv_flow*"]
