@@ -1,0 +1,128 @@
+# Fixture: export tasks exercising the §4.2 library view.
+#
+# The distinguishing content of a library page is the DATAFLOW CONTRACT, so the
+# tasks here are chosen to pin the three things §4.2 says the rendering must get
+# right, plus visibility:
+#
+#   Compile   declares `consumes:` -- an authored claim
+#   Link      declares no `consumes:` of its own but inherits Compile's via
+#             `uses:`. consumes_declared is True: an inherited declaration IS a
+#             declaration, and rendering it as "not declared" would hide a
+#             contract the reader is subject to. Also pins that `tags:` do NOT
+#             inherit -- Link carries none of Compile's std.Stable.
+#   Report    `consumes: none` -- an authored claim of "no inputs", which must
+#             NOT read the same as Publish's silence
+#   Publish   says nothing about consumes and uses nothing, so the engine
+#             defaults it to All with consumes_declared False. This is the case
+#             that must render as "not declared -- accepts all inputs"
+#   internal  no scope -- excluded from docs by default
+#   helper    `local` -- excluded always
+package:
+  name: library
+  desc: Reusable build steps
+  doc: |
+    Fixture package for the library-task documentation kind.
+
+  imports:
+  - std
+
+  types:
+  - name: ObjFile
+    doc: |
+      A compiled object file. Exists so `produces`/`consumes` have a type to
+      speak about that is not one of std's.
+    with:
+      arch:
+        type: str
+        value: ""
+        doc: Target architecture the object was compiled for.
+
+  - name: Image
+    uses: ObjFile
+    doc: |
+      A linked executable image. Derives from ObjFile so the type view has an
+      inheritance edge to draw.
+
+  tasks:
+  - name: Compile
+    scope: export
+    desc: Compile sources into objects
+    doc: |
+      Consumes filesets and produces object files.
+    consumes:
+    - type: std.FileSet
+      filetype: verilogSource
+    produces:
+    - type: library.ObjFile
+    tags:
+    - std.Stable:
+        since: "1.0"
+    with:
+      opt:
+        type: str
+        value: "-O2"
+        doc: Optimization flags passed to the compiler.
+        values:
+        - value: "-O0"
+          desc: No optimization; fastest to build.
+        - value: "-O2"
+          desc: The default.
+      defines:
+        type: list
+        value: []
+        doc: Preprocessor defines.
+
+  - name: Link
+    scope: export
+    uses: Compile
+    desc: Link objects into an image
+    doc: |
+      Declares no `consumes:` of its own, but inherits Compile's through
+      ``uses:``. That is still a declaration, and the page must say so.
+    produces:
+    - type: library.Image
+    needs:
+    - Compile
+    with:
+      entry:
+        type: str
+        value: main
+        doc: Entry-point symbol.
+
+  - name: Report
+    scope: export
+    desc: Summarize a run
+    doc: |
+      Declares `consumes: none` -- an authored claim of "no inputs", which is a
+      different statement from Link's silence.
+    consumes: none
+    produces: []
+    tags:
+    - std.Experimental:
+        reason: output format not settled
+
+  - name: Publish
+    scope: export
+    desc: Copy results somewhere durable
+    doc: |
+      Says nothing about `consumes:` and inherits nothing, so the engine
+      defaults it to "all". Rendering that default as an authored claim would
+      state a contract this task never made.
+    produces:
+    - type: library.Image
+
+  - name: Retired
+    scope: export
+    desc: An older path, kept for compatibility
+    tags:
+    - std.Deprecated:
+        reason: superseded by the incremental flow
+        replacement: library.Compile
+        since: "1.4"
+
+  - name: internal
+    desc: Package-internal; excluded from docs by default
+
+  - name: helper
+    scope: local
+    desc: Fragment-only; excluded from docs always

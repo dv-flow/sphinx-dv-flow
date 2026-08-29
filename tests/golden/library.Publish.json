@@ -1,0 +1,35 @@
+{
+  "kind": "library",
+  "name": "library.Publish",
+  "package": "library",
+  "desc": "Copy results somewhere durable",
+  "doc": "Says nothing about `consumes:` and inherits nothing, so the engine\ndefaults it to \"all\". Rendering that default as an authored claim would\nstate a contract this task never made.\n",
+  "scope": [
+    "export"
+  ],
+  "facets": [],
+  "srcinfo": {
+    "file": "flow.yaml",
+    "line": 104
+  },
+  "uses_chain": [],
+  "params": [],
+  "usage": null,
+  "consumes": "ConsumesE.All",
+  "consumes_declared": false,
+  "produces": [
+    {
+      "type": "library.Image",
+      "attrs": {}
+    }
+  ],
+  "passthrough": "PassthroughE.Unused",
+  "needs": [],
+  "tags": [],
+  "requires": [],
+  "examples": [],
+  "behavior": {
+    "rundir": "unique"
+  },
+  "implementations": []
+}

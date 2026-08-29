@@ -7,7 +7,10 @@ name = "sphinx-dv-flow"
 dynamic = ["version"]
 description = "Sphinx support for documenting DV Flow workflows"
 readme = "README.md"
-requires-python = ">=3.9"
+# 3.10, not 3.9: dv-flow-mgr uses PEP 604 unions (`str | None`) in annotations
+# that are evaluated at import time, so 3.9 fails on `import dv_flow.mgr`.
+# Claiming a floor we cannot actually run on is worse than a higher floor.
+requires-python = ">=3.10"
 license = {file = "LICENSE"}
 authors = [
     {name = "Matthew Ballance", email = "matt.ballance@gmail.com"},

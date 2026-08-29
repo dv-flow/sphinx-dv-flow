@@ -1,0 +1,264 @@
+"""The shared content blocks (design §5).
+
+One renderer per block, assembled per kind in `kinds.py`. Splitting it this way
+is what stops a root page and a library page from growing two slightly different
+parameter tables.
+"""
+
+import os
+
+from docutils import nodes
+
+from . import lifecycle as lifecycle_render
+from .docfield import parse_doc
+
+# Rendered when a task inherits the engine's `consumes` default. It reads as
+# what it is -- an absence -- rather than as a contract the author wrote.
+UNDECLARED_CONSUMES = "not declared — accepts all inputs"
+
+
+def _admonition(title, body_nodes, classes):
+    node = nodes.container(classes=classes)
+    para = nodes.paragraph()
+    para += nodes.strong(text=title)
+    node += para
+    node += body_nodes
+    return node
+
+
+def section_title(text, level_nodes=None):
+    para = nodes.paragraph(classes=['dvf-block-title'])
+    para += nodes.strong(text=text)
+    return para
+
+
+def badges(doc):
+    """Scope and lifecycle badges for the header line."""
+    out = ["[%s]" % scope for scope in doc.scope]
+    if getattr(doc, 'kind', None) == 'abstract':
+        out.append("[abstract]")
+    label = lifecycle_render.badge_text(doc)
+    if label:
+        out.append("[%s]" % label)
+    return out
+
+
+def header(doc):
+    """Name, badges and one-line description."""
+    result = []
+
+    para = nodes.paragraph(classes=['dvf-header'])
+    for badge in badges(doc):
+        para += nodes.inline(text=badge, classes=['dvf-badge'])
+        para += nodes.Text(" ")
+    if doc.desc:
+        para += nodes.Text(doc.desc)
+    if para.children:
+        result.append(para)
+
+    return result
+
+
+def lifecycle(doc):
+    """The lifecycle banner. See `render/lifecycle.py` for why it goes first."""
+    return lifecycle_render.banner(doc)
+
+
+def description(doc, state, srcfile=None):
+    """The `doc:` field, parsed as reStructuredText."""
+    if not doc.doc:
+        return []
+    line = doc.srcinfo.line if doc.srcinfo else 0
+    return parse_doc(doc.doc, state,
+                     source=srcfile or (doc.srcinfo.file if doc.srcinfo else None),
+                     line=line)
+
+
+def signature(doc):
+    """The `uses:` chain, most-derived first.
+
+    Rendered as a chain rather than only the immediate base: a reader asking
+    "what is this built on" usually wants the whole line, and the intermediate
+    task is often the one with the documentation.
+    """
+    if not doc.uses_chain:
+        return []
+    para = nodes.paragraph()
+    para += nodes.strong(text="Uses: ")
+    for i, name in enumerate(doc.uses_chain):
+        if i:
+            para += nodes.Text(" → ")
+        para += nodes.literal(text=name)
+    return [para]
+
+
+def _field_list(rows):
+    """`rows` is [(label, [nodes])]. Empty rows are skipped by the caller."""
+    field_list = nodes.field_list()
+    for label, body in rows:
+        field = nodes.field()
+        field += nodes.field_name(text=label)
+        field_body = nodes.field_body()
+        field_body += body
+        field += field_body
+        field_list += field
+    return field_list
+
+
+def dataflow(doc):
+    """`consumes` / `produces` / `passthrough` -- the type signature of a task.
+
+    The distinguishing content of a library page. Three things this has to get
+    right, all of them about not overstating a contract:
+
+    - an undeclared `consumes` renders as an absence, visually distinct from a
+      declaration, because the engine's default is not a claim the author made;
+    - `produces` declares what MAY be produced, said once in the heading rather
+      than hedged on every row;
+    - an inherited declaration is still a declaration, so it renders normally.
+    """
+    rows = []
+
+    consumes_body = nodes.paragraph()
+    if not doc.consumes_declared:
+        consumes_body += nodes.emphasis(text=UNDECLARED_CONSUMES)
+    else:
+        consumes = doc.consumes
+        if isinstance(consumes, list):
+            bullet = nodes.bullet_list()
+            for entry in consumes:
+                item = nodes.list_item()
+                para = nodes.paragraph()
+                para += nodes.literal(text=_pattern_text(entry))
+                item += para
+                bullet += item
+            consumes_body = bullet
+        else:
+            text = str(consumes)
+            if text.endswith("No"):
+                consumes_body += nodes.Text("none — this task takes no inputs")
+            else:
+                consumes_body += nodes.Text(text.split('.')[-1].lower())
+    rows.append(("Consumes", consumes_body))
+
+    if doc.produces:
+        bullet = nodes.bullet_list()
+        for entry in doc.produces:
+            item = nodes.list_item()
+            para = nodes.paragraph()
+            para += _type_xref(entry.type)
+            if entry.attrs:
+                para += nodes.Text(" ")
+                para += nodes.literal(text=_attrs_text(entry.attrs))
+            item += para
+            bullet += item
+        rows.append(("Produces (may produce)", bullet))
+
+    if rows:
+        return [_field_list(rows)]
+    return []
+
+
+def _pattern_text(entry):
+    if isinstance(entry, dict):
+        return ", ".join("%s=%s" % (k, v) for k, v in entry.items())
+    return str(entry)
+
+
+def _attrs_text(attrs):
+    return ", ".join("%s=%s" % (k, v) for k, v in attrs.items())
+
+
+def _type_xref(name):
+    """A produced/consumed item type, as a cross-reference when resolvable.
+
+    A pending xref rather than plain literal text: the type is the vocabulary
+    the dataflow speaks, and being able to click through to it is most of the
+    value of documenting types at all. Unresolved references degrade to the
+    literal text (M2 registers the targets).
+    """
+    from sphinx import addnodes
+
+    ref = addnodes.pending_xref(
+        '', refdomain='dvf', reftype='type', reftarget=name,
+        refexplicit=False, refwarn=False)
+    ref += nodes.literal(text=name)
+    return ref
+
+
+def needs(doc):
+    if not doc.needs:
+        return []
+    bullet = nodes.bullet_list()
+    for name in doc.needs:
+        item = nodes.list_item()
+        para = nodes.paragraph()
+        para += _task_xref(name)
+        item += para
+        bullet += item
+    return [_field_list([("Needs", bullet)])]
+
+
+def _task_xref(name):
+    from sphinx import addnodes
+
+    ref = addnodes.pending_xref(
+        '', refdomain='dvf', reftype='task', reftarget=name,
+        refexplicit=False, refwarn=False)
+    ref += nodes.literal(text=name)
+    return ref
+
+
+def facts(doc):
+    """The collapsed behavior table.
+
+    Only what was actually set: a table of engine defaults tells the reader
+    nothing and crowds out the one row that does.
+    """
+    if not doc.behavior:
+        return []
+    rows = []
+    for key in sorted(doc.behavior):
+        body = nodes.paragraph()
+        body += nodes.literal(text=str(doc.behavior[key]))
+        rows.append((key, body))
+    return [_field_list(rows)]
+
+
+def examples(doc, state, srcfile=None):
+    """Worked examples, each as a titled code block.
+
+    A literal block, not a bullet list: example code is meant to be copied, and
+    bullets are not part of what the reader should type.
+    """
+    out = []
+    for i, ex in enumerate(doc.examples):
+        title = ex.title or "Example %d" % (i + 1)
+        para = nodes.paragraph()
+        para += nodes.strong(text=title)
+        out.append(para)
+        if ex.caption:
+            out.extend(parse_doc(ex.caption, state, source=srcfile))
+        block = nodes.literal_block(ex.code, ex.code)
+        block['language'] = ex.lang or 'text'
+        out.append(block)
+    return out
+
+
+def source(doc, base_dir=None):
+    """A `file:line` pointer to the declaration.
+
+    Relativized when possible: an absolute path from someone else's machine is
+    noise, and the reader wants to know where in *their* checkout to look.
+    """
+    if doc.srcinfo is None or not doc.srcinfo.file:
+        return []
+    path = doc.srcinfo.file
+    if base_dir:
+        try:
+            path = os.path.relpath(path, base_dir)
+        except ValueError:
+            pass
+    para = nodes.paragraph(classes=['dvf-source'])
+    para += nodes.emphasis(text="Defined in %s:%d" % (path, doc.srcinfo.line))
+    return [para]

@@ -1,0 +1,89 @@
+{
+  "kind": "library",
+  "name": "library.Compile",
+  "package": "library",
+  "desc": "Compile sources into objects",
+  "doc": "Consumes filesets and produces object files.\n",
+  "scope": [
+    "export"
+  ],
+  "facets": [],
+  "srcinfo": {
+    "file": "flow.yaml",
+    "line": 47
+  },
+  "uses_chain": [],
+  "params": [
+    {
+      "name": "defines",
+      "type": "Union",
+      "default": [],
+      "default_expr": null,
+      "desc": "",
+      "doc": "Preprocessor defines.",
+      "declared_by": "library.Compile",
+      "overridden_by": null,
+      "inherited": false,
+      "values": [],
+      "values_open": false,
+      "cli": null,
+      "define": "-D Compile.defines=VALUE"
+    },
+    {
+      "name": "opt",
+      "type": "str",
+      "default": "-O2",
+      "default_expr": null,
+      "desc": "",
+      "doc": "Optimization flags passed to the compiler.",
+      "declared_by": "library.Compile",
+      "overridden_by": null,
+      "inherited": false,
+      "values": [
+        {
+          "value": "-O0",
+          "desc": "No optimization; fastest to build."
+        },
+        {
+          "value": "-O2",
+          "desc": "The default."
+        }
+      ],
+      "values_open": false,
+      "cli": null,
+      "define": "-D Compile.opt=VALUE"
+    }
+  ],
+  "usage": null,
+  "consumes": [
+    {
+      "type": "std.FileSet",
+      "filetype": "verilogSource"
+    }
+  ],
+  "consumes_declared": true,
+  "produces": [
+    {
+      "type": "library.ObjFile",
+      "attrs": {}
+    }
+  ],
+  "passthrough": "PassthroughE.Unused",
+  "needs": [],
+  "tags": [
+    {
+      "name": "std.Stable",
+      "params": {
+        "category": "",
+        "value": "",
+        "since": "1.0"
+      }
+    }
+  ],
+  "requires": [],
+  "examples": [],
+  "behavior": {
+    "rundir": "unique"
+  },
+  "implementations": []
+}

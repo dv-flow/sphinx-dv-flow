@@ -1,0 +1,101 @@
+{
+  "kind": "library",
+  "name": "library.Link",
+  "package": "library",
+  "desc": "Link objects into an image",
+  "doc": "Declares no `consumes:` of its own, but inherits Compile's through\n``uses:``. That is still a declaration, and the page must say so.\n",
+  "scope": [
+    "export"
+  ],
+  "facets": [
+    "needs"
+  ],
+  "srcinfo": {
+    "file": "flow.yaml",
+    "line": 75
+  },
+  "uses_chain": [
+    "library.Compile"
+  ],
+  "params": [
+    {
+      "name": "defines",
+      "type": "Union",
+      "default": [],
+      "default_expr": null,
+      "desc": "",
+      "doc": "Preprocessor defines.",
+      "declared_by": "library.Compile",
+      "overridden_by": null,
+      "inherited": true,
+      "values": [],
+      "values_open": false,
+      "cli": null,
+      "define": "-D Link.defines=VALUE"
+    },
+    {
+      "name": "entry",
+      "type": "str",
+      "default": "main",
+      "default_expr": null,
+      "desc": "",
+      "doc": "Entry-point symbol.",
+      "declared_by": "library.Link",
+      "overridden_by": null,
+      "inherited": false,
+      "values": [],
+      "values_open": false,
+      "cli": null,
+      "define": "-D Link.entry=VALUE"
+    },
+    {
+      "name": "opt",
+      "type": "str",
+      "default": "-O2",
+      "default_expr": null,
+      "desc": "",
+      "doc": "Optimization flags passed to the compiler.",
+      "declared_by": "library.Compile",
+      "overridden_by": null,
+      "inherited": true,
+      "values": [
+        {
+          "value": "-O0",
+          "desc": "No optimization; fastest to build."
+        },
+        {
+          "value": "-O2",
+          "desc": "The default."
+        }
+      ],
+      "values_open": false,
+      "cli": null,
+      "define": "-D Link.opt=VALUE"
+    }
+  ],
+  "usage": null,
+  "consumes": [
+    {
+      "type": "std.FileSet",
+      "filetype": "verilogSource"
+    }
+  ],
+  "consumes_declared": true,
+  "produces": [
+    {
+      "type": "library.Image",
+      "attrs": {}
+    }
+  ],
+  "passthrough": "PassthroughE.Unused",
+  "needs": [
+    "library.Compile"
+  ],
+  "tags": [],
+  "requires": [],
+  "examples": [],
+  "behavior": {
+    "rundir": "unique"
+  },
+  "implementations": []
+}

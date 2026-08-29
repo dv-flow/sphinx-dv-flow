@@ -1,0 +1,126 @@
+{
+  "kind": "library",
+  "name": "inherit.Leaf",
+  "package": "inherit",
+  "desc": "The top of the chain",
+  "doc": "Changes one default and removes one flag. Everything else it has, it\ninherited -- and the page has to make that obvious.\n",
+  "scope": [
+    "export"
+  ],
+  "facets": [],
+  "srcinfo": {
+    "file": "flow.yaml",
+    "line": 68
+  },
+  "uses_chain": [
+    "inherit.Middle",
+    "inherit.Base"
+  ],
+  "params": [
+    {
+      "name": "flag_removed",
+      "type": "str",
+      "default": "",
+      "default_expr": null,
+      "desc": "",
+      "doc": "Exposed as a flag by Base; Leaf takes the flag away.",
+      "declared_by": "inherit.Base",
+      "overridden_by": "inherit.Leaf",
+      "inherited": true,
+      "values": [],
+      "values_open": false,
+      "cli": null,
+      "define": "-D Leaf.flag_removed=VALUE"
+    },
+    {
+      "name": "from_base",
+      "type": "str",
+      "default": "base-value",
+      "default_expr": null,
+      "desc": "",
+      "doc": "Declared in Base and never touched again.",
+      "declared_by": "inherit.Base",
+      "overridden_by": null,
+      "inherited": true,
+      "values": [],
+      "values_open": false,
+      "cli": null,
+      "define": "-D Leaf.from_base=VALUE"
+    },
+    {
+      "name": "from_middle",
+      "type": "int",
+      "default": 7,
+      "default_expr": null,
+      "desc": "",
+      "doc": "Declared in Middle.",
+      "declared_by": "inherit.Middle",
+      "overridden_by": null,
+      "inherited": true,
+      "values": [],
+      "values_open": false,
+      "cli": null,
+      "define": "-D Leaf.from_middle=VALUE"
+    },
+    {
+      "name": "overridden",
+      "type": "str",
+      "default": "leaf-default",
+      "default_expr": null,
+      "desc": "",
+      "doc": "Declared in Base with documentation and a value set. Leaf changes\nonly the default.\n",
+      "declared_by": "inherit.Base",
+      "overridden_by": "inherit.Leaf",
+      "inherited": true,
+      "values": [
+        {
+          "value": "base-default",
+          "desc": "What Base chose."
+        },
+        {
+          "value": "leaf-default",
+          "desc": "What Leaf chose."
+        },
+        {
+          "value": "third",
+          "desc": "Neither; present so the set is not a pair."
+        }
+      ],
+      "values_open": false,
+      "cli": {
+        "name": "overridden",
+        "short": null,
+        "hidden": false
+      },
+      "define": "-D Leaf.overridden=VALUE"
+    },
+    {
+      "name": "own",
+      "type": "str",
+      "default": "leaf-only",
+      "default_expr": null,
+      "desc": "",
+      "doc": "Declared only on Leaf.",
+      "declared_by": "inherit.Leaf",
+      "overridden_by": null,
+      "inherited": false,
+      "values": [],
+      "values_open": false,
+      "cli": null,
+      "define": "-D Leaf.own=VALUE"
+    }
+  ],
+  "usage": null,
+  "consumes": "ConsumesE.All",
+  "consumes_declared": false,
+  "produces": [],
+  "passthrough": "PassthroughE.Unused",
+  "needs": [],
+  "tags": [],
+  "requires": [],
+  "examples": [],
+  "behavior": {
+    "rundir": "unique"
+  },
+  "implementations": []
+}

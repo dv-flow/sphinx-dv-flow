@@ -19,20 +19,30 @@ from dv_flow.doc import __version__
 
 
 def setup(app):
-    """Sphinx entry point.
+    """Sphinx entry point."""
+    from .config import setup_config
+    from .directives.auto import DvfAutoPackage, DvfAutoTask, DvfAutoType
+    from .domain import DvfDomain
+    from .env import purge
 
-    M0 registers nothing: the config values, the ``dvf`` domain, the
-    directives and the indices arrive with the milestones that define them.
-    The hook exists now so that ``extensions = ["sphinx_dv_flow"]`` is a valid
-    thing to write from the first commit, and so the docs build in CI exercises
-    the real load path rather than a stub added later.
-    """
+    setup_config(app)
+
+    # Loaded projects are cached per build, outside the environment -- see
+    # `env.py` for why they must not be stored on it.
+    app.connect('builder-inited', purge)
+
+    app.add_domain(DvfDomain)
+    app.add_directive_to_domain('dvf', 'autotask', DvfAutoTask)
+    app.add_directive_to_domain('dvf', 'autotype', DvfAutoType)
+    app.add_directive_to_domain('dvf', 'autopackage', DvfAutoPackage)
+
     return {
         "version": __version__,
-        # The extension holds no cross-document state yet. Both are revisited
-        # when the `dvf` domain lands in M2 -- a domain's inventory has to be
-        # merged for parallel reads to be safe, and claiming safety before
-        # that code exists is how silent cross-reference loss happens.
+        # Safe because `DvfDomain.merge_domaindata` exists: each parallel
+        # worker builds its own object inventory, and without a merge the
+        # objects described in a subprocess-read document would be lost --
+        # dangling every reference to them, intermittently, depending on how
+        # work happened to be distributed.
         "parallel_read_safe": True,
         "parallel_write_safe": True,
     }

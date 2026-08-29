@@ -24,7 +24,26 @@ extensions = [
 templates_path = ["_templates"]
 exclude_patterns = ["_build", "Thumbs.db", ".DS_Store"]
 
+# Every reference these pages generate now resolves. M1 needed a
+# `nitpick_ignore_regex` for `dvf:type`, because the dataflow blocks emitted
+# type references before the directive that registers type targets existed;
+# M2's `dvf:autotype` removed the need for it.
+#
+# The one thing this requires of `example.rst`: a package rendered with
+# `:types:` must document its tasks too, or the "Produced by" links on the type
+# pages point at tasks no page describes. That is nitpicky doing its job -- the
+# reference really is dangling -- so the fix belongs in the document, not here.
 nitpicky = True
+
+# `std` is a different distribution, and this doc set does not document it --
+# so a fixture type extending `std.Check` produces a reference with nowhere to
+# land. That is a real situation for any project building on a library, and the
+# real answer is intersphinx (M5), which resolves such names against the other
+# project's inventory. Until then it is silenced narrowly, by package prefix:
+# a dangling reference to anything in *this* project still fails the build.
+nitpick_ignore_regex = [
+    (r'dvf:.*', r'std\..*'),
+]
 
 html_theme = "furo"
 html_static_path = ["_static"]

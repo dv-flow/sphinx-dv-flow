@@ -1,0 +1,84 @@
+# Fixture: a 3-level `uses:` chain, for parameter provenance (§4.2).
+#
+# `collect_task_params` merges the chain, so every row on a derived task's page
+# has to be annotated with the task that DECLARED it. A derived task that only
+# changes a default should read as such, not as if it redeclared the world.
+#
+# The chain is Base <- Middle <- Leaf, and each parameter pins one case:
+#
+#   from_base     declared once, at the bottom. Leaf shows it as inherited from
+#                 Base -- two levels up, not one.
+#   from_middle   declared in the middle. Provenance must name Middle.
+#   overridden    declared in Base with docs and a value set, then re-declared
+#                 in Leaf with only a new `value:`. Two things must hold:
+#                 provenance names Leaf (it did redeclare), and the value set
+#                 is still Base's -- a value set inherits INDEPENDENTLY of the
+#                 value, which is the engine's documented rule and the case
+#                 most likely to be silently dropped.
+#   flag_removed  Base exposes a flag; Leaf sets `cli: false`. The flag must be
+#                 gone from Leaf, while the parameter itself remains (settable
+#                 with -D). Absence and `false` mean opposite things here.
+#   own          declared only on Leaf. Not inherited; not marked as such.
+package:
+  name: inherit
+  desc: A three-level uses chain
+
+  tasks:
+  - name: Base
+    scope: export
+    desc: The bottom of the chain
+    doc: |
+      Declares most of the parameters, and is where a reader gets sent when
+      provenance points here.
+    with:
+      from_base:
+        type: str
+        value: base-value
+        doc: Declared in Base and never touched again.
+      overridden:
+        type: str
+        value: base-default
+        cli: true
+        doc: |
+          Declared in Base with documentation and a value set. Leaf changes
+          only the default.
+        values:
+        - value: base-default
+          desc: What Base chose.
+        - value: leaf-default
+          desc: What Leaf chose.
+        - value: third
+          desc: Neither; present so the set is not a pair.
+      flag_removed:
+        type: str
+        value: ""
+        cli: true
+        doc: Exposed as a flag by Base; Leaf takes the flag away.
+
+  - name: Middle
+    scope: export
+    uses: Base
+    desc: The middle of the chain
+    with:
+      from_middle:
+        type: int
+        value: 7
+        doc: Declared in Middle.
+
+  - name: Leaf
+    scope: export
+    uses: Middle
+    desc: The top of the chain
+    doc: |
+      Changes one default and removes one flag. Everything else it has, it
+      inherited -- and the page has to make that obvious.
+    with:
+      overridden:
+        # Only a value. No `doc:`, no `values:` -- both must survive from Base.
+        value: leaf-default
+      flag_removed:
+        cli: false
+      own:
+        type: str
+        value: leaf-only
+        doc: Declared only on Leaf.

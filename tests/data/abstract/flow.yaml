@@ -1,0 +1,84 @@
+# Fixture: abstract tasks -- the extension-point kind (§4.3).
+#
+# What a reader needs from an abstract task is "how do I derive from this",
+# which is a different question from "how do I run this" or "what do I get if I
+# use this". The cases here:
+#
+#   Backend       abstract, with parameters split by whether a deriver MUST
+#                 supply them. `tool` has no meaningful default and is the
+#                 thing every implementation has to set; `verbose` has one and
+#                 is optional.
+#   RunnableBase  abstract AND declares `scope: root`. It must NOT render a
+#                 synopsis: running it is not available, whatever the scope
+#                 says, so offering a command line would be an invitation to
+#                 an error.
+#   Vlt, Vcs      known implementations. Nothing in the engine answers "what
+#                 derives from this", so the index has to be built.
+#   Standalone    an ordinary export task, so "known implementations" is not
+#                 just every task in the package.
+package:
+  name: abstract
+  desc: Extension points and their implementations
+
+  imports:
+  - std
+
+  types:
+  - name: HasLicense
+    uses: std.Check
+    doc: |
+      A contract an implementation must satisfy. Used via `requires:`, which is
+      what an abstract task imposes on anything deriving from it.
+
+  tasks:
+  - name: Backend
+    abstract: true
+    scope: export
+    desc: A simulation backend
+    doc: |
+      Derive from this to add a backend. Set ``tool``; everything else has a
+      working default.
+    requires:
+    - abstract.HasLicense
+    with:
+      tool:
+        type: str
+        value: ""
+        doc: |
+          Executable to invoke. Every implementation must set this -- the empty
+          default is not a usable value, it is the absence of one.
+      verbose:
+        type: bool
+        value: false
+        # Renamed because `--verbose` is one of dfm's own options and the
+        # loader rejects the collision. Exercising `cli: {name: ...}` is worth
+        # having in a fixture regardless.
+        cli:
+          name: tool-verbose
+        doc: Emit tool output.
+
+  - name: RunnableBase
+    abstract: true
+    scope: root
+    desc: Abstract, and marked root
+    doc: |
+      Declares ``scope: root`` but is abstract, so it cannot be run. The page
+      must not offer a command line.
+
+  - name: Vlt
+    uses: Backend
+    scope: export
+    desc: Verilator backend
+    with:
+      tool: verilator
+
+  - name: Vcs
+    uses: Backend
+    scope: export
+    desc: VCS backend
+    with:
+      tool: vcs
+
+  - name: Standalone
+    scope: export
+    desc: Derives from nothing

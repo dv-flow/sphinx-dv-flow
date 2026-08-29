@@ -1,0 +1,65 @@
+# Fixture: lifecycle tags (P1).
+#
+# A lifecycle tag is a claim about interface churn, not about runtime behavior.
+# The cases that have to render differently:
+#
+#   Current       std.Stable with a `since`.
+#   Preview       std.Experimental with a reason.
+#   Retired       std.Deprecated naming a replacement IN THIS PACKAGE, so the
+#                 banner's replacement must render as a working link.
+#   Abandoned     std.Deprecated with NO replacement. An empty `replacement` is
+#                 itself meaningful -- it says there is none, which is a
+#                 different statement from having forgotten to name one.
+#   Elsewhere     std.Deprecated whose replacement is in another package and
+#                 therefore not documented here. The banner must still name it
+#                 rather than dropping the text because the link won't resolve.
+#   Plain         untagged. The assumed state, and it must not acquire a badge.
+package:
+  name: lifecycle
+  desc: Tasks at every stage of their life
+
+  imports:
+  - std
+
+  tasks:
+  - name: Current
+    scope: export
+    desc: The one to use
+    tags:
+    - std.Stable:
+        since: "1.0"
+
+  - name: Preview
+    scope: export
+    desc: Ships before its interface has settled
+    tags:
+    - std.Experimental:
+        reason: parameter names are likely to change
+
+  - name: Retired
+    scope: export
+    desc: Superseded
+    tags:
+    - std.Deprecated:
+        reason: superseded by the incremental flow
+        replacement: lifecycle.Current
+        since: "1.4"
+
+  - name: Abandoned
+    scope: export
+    desc: Removed with nothing to replace it
+    tags:
+    - std.Deprecated:
+        reason: the underlying tool is gone
+
+  - name: Elsewhere
+    scope: export
+    desc: Replaced by something in another package
+    tags:
+    - std.Deprecated:
+        reason: moved out of this package
+        replacement: other.Thing
+
+  - name: Plain
+    scope: export
+    desc: Untagged, and therefore assumed stable

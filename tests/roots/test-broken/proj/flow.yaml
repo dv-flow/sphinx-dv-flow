@@ -1,0 +1,5 @@
+# Deliberately malformed: `tasks` must be a list, not a string. A docs build
+# MAY fail on a malformed flow file -- but it has to fail with a location.
+package:
+  name: broken
+  tasks: "this is not a list"

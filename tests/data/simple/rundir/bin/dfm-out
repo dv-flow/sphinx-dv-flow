@@ -1,0 +1,2 @@
+#!/bin/sh
+exec "/home/mballance/projects/dv-flow/sphinx-dv-flow/packages/python/bin/python3" -m dv_flow.mgr.out "$@"

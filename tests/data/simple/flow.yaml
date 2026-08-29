@@ -1,0 +1,108 @@
+# Fixture: a root task exercising the §4.1 CLI view.
+#
+# Every parameter here exists to pin one rendering decision that is easy to get
+# wrong and hard to notice in output:
+#
+#   build    an expression default -- the resolved value and the expression it
+#            came from must BOTH survive extraction (design §4.1)
+#   mode     a closed value set with per-value docs
+#   backend  an OPEN value set -- must never render as exhaustive
+#   jobs     a flag with a short option
+#   trace    a bool flag
+#   top      no `cli:` at all -- reachable only via -D, and the point of the
+#            "Parameters" block is that such params are still documented
+#   secret   `cli: {hidden: true}` -- accepted but out of help
+#   name     no `value:` at all. Pins that this is NOT "required": the engine
+#            substitutes the type default ("") at load, the distinction is gone
+#            before anything can read it, and the task runs happily without it.
+#            See PLAN.md §5 U10.
+package:
+  name: simple
+  desc: A minimal project with one runnable task
+  doc: |
+    Fixture package for the root-task documentation kind. It is deliberately
+    small: it exists to pin rendering decisions, not to do anything.
+
+  with:
+    build:
+      type: str
+      value: opt
+      doc: Package-level build flavor, referenced by a task default.
+
+  tasks:
+  - name: run
+    scope: root
+    desc: Run the thing
+    doc: |
+      The long form of what ``run`` does.
+
+      It has more than one paragraph, because the renderer has to handle
+      that and a one-line ``doc:`` would not prove it.
+    examples:
+    - title: Run with defaults
+      lang: shell
+      code: dfm run run
+    - title: Pick a backend
+      caption: Backends form an open set, so an unlisted one warns.
+      lang: shell
+      code: dfm run run --backend vcs
+    with:
+      build:
+        type: str
+        value: "${{ build }}"
+        cli: true
+        doc: |
+          Build flavor. Defaults to the package-level ``build`` variable, so
+          the rendered default must show the resolved value *and* say where
+          it came from.
+      mode:
+        type: str
+        value: normal
+        cli: true
+        doc: How much output to produce.
+        values:
+        - value: quiet
+          desc: Errors only.
+        - value: normal
+          desc: The usual amount.
+        - value: full
+          desc: Everything, including per-step timing.
+      backend:
+        type: str
+        value: vlt
+        cli: true
+        doc: Simulation backend.
+        values:
+          open: true
+          of:
+          - value: vlt
+            desc: Verilator.
+          - value: vcs
+            desc: Synopsys VCS.
+      jobs:
+        type: int
+        value: 1
+        cli:
+          # Uppercase because `-j` is one of dfm's own options and the loader
+          # rejects it. A short option that is not the parameter's first letter
+          # is worth having in a fixture anyway.
+          short: J
+        doc: Parallel job count.
+      trace:
+        type: bool
+        value: false
+        cli: true
+        doc: Emit a waveform trace.
+      top:
+        type: str
+        value: tb_top
+        doc: Top-level module. No flag; set it with -D.
+      secret:
+        type: str
+        value: ""
+        cli:
+          hidden: true
+        doc: Accepted, but kept out of help.
+      name:
+        type: str
+        doc: Declared with no value; the engine defaults it to the empty string.

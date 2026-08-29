@@ -33,3 +33,7 @@ The project has two halves, and the split matters:
    :caption: Contents
 
    install
+   quickstart
+   guide/index
+   example
+   reference/index

@@ -1,0 +1,41 @@
+{
+  "kind": "library",
+  "name": "library.Retired",
+  "package": "library",
+  "desc": "An older path, kept for compatibility",
+  "doc": "",
+  "scope": [
+    "export"
+  ],
+  "facets": [],
+  "srcinfo": {
+    "file": "flow.yaml",
+    "line": 114
+  },
+  "uses_chain": [],
+  "params": [],
+  "usage": null,
+  "consumes": "ConsumesE.All",
+  "consumes_declared": false,
+  "produces": [],
+  "passthrough": "PassthroughE.Unused",
+  "needs": [],
+  "tags": [
+    {
+      "name": "std.Deprecated",
+      "params": {
+        "category": "",
+        "value": "",
+        "reason": "superseded by the incremental flow",
+        "replacement": "library.Compile",
+        "since": "1.4"
+      }
+    }
+  ],
+  "requires": [],
+  "examples": [],
+  "behavior": {
+    "rundir": "unique"
+  },
+  "implementations": []
+}

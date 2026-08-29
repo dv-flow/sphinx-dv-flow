@@ -1,0 +1,54 @@
+{
+  "name": "simple.run",
+  "srcdir": "/home/mballance/projects/dv-flow/sphinx-dv-flow/tests/data/simple",
+  "rundir": "/home/mballance/projects/dv-flow/sphinx-dv-flow/tests/data/simple/rundir/simple.run",
+  "logfile": "simple.run.log",
+  "params": {
+    "build": "opt",
+    "mode": "normal",
+    "backend": "vlt",
+    "jobs": 1,
+    "trace": false,
+    "top": "tb_top",
+    "secret": "",
+    "name": ""
+  },
+  "inputs_signature": [],
+  "input": {
+    "name": "simple.run",
+    "changed": false,
+    "srcdir": "/home/mballance/projects/dv-flow/sphinx-dv-flow/tests/data/simple",
+    "rundir": "/home/mballance/projects/dv-flow/sphinx-dv-flow/tests/data/simple/rundir/simple.run",
+    "params": {
+      "build": "opt",
+      "mode": "normal",
+      "backend": "vlt",
+      "jobs": 1,
+      "trace": false,
+      "top": "tb_top",
+      "secret": "",
+      "name": ""
+    },
+    "inputs": [],
+    "memento": null,
+    "inherits_rundir": false
+  },
+  "needs": [],
+  "commands": [],
+  "result": {
+    "status": 0,
+    "changed": true,
+    "markers": [],
+    "memento": null
+  },
+  "output": {
+    "changed": true,
+    "output": [],
+    "dep_m": {
+      "simple.run": []
+    }
+  },
+  "consumes": "ConsumesE.All",
+  "passthrough": "PassthroughE.Unused",
+  "produces": null
+}

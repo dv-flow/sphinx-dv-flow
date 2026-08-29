@@ -1,0 +1,101 @@
+# Fixture: data types and the reverse indices built over them.
+#
+# A type page's value is mostly in the reverse direction: given a type, who
+# produces it and who consumes it? Nothing in the engine answers that -- the
+# declarations point the other way -- so the index has to be built, and this
+# fixture is shaped to make each of its edge cases visible:
+#
+#   Artifact       a base type; nobody produces it directly. A type with no
+#                  producers must render as such rather than being omitted.
+#   ObjFile        produced by two tasks, consumed by one. Multiple producers
+#                  is the normal case and the index must not collapse them.
+#   Image          derives from Artifact; produced and consumed once.
+#   Report         produced by a task in this package, consumed by NOTHING.
+#                  A dead-end output is worth seeing on the page.
+#
+# `consumes` entries are attribute-qualified in one case and bare in another,
+# because an index that keys on the type name alone would merge two genuinely
+# different requirements.
+package:
+  name: types
+  desc: Types, and who produces and consumes them
+  doc: |
+    Fixture package for type documentation and the reverse indices.
+
+  imports:
+  - std
+
+  types:
+  - name: Artifact
+    doc: |
+      Anything a task emits. The root of this package's type hierarchy, and
+      deliberately produced by nothing.
+    with:
+      origin:
+        type: str
+        value: ""
+        doc: Which task produced it.
+
+  - name: ObjFile
+    uses: Artifact
+    doc: |
+      A compiled object file.
+    with:
+      arch:
+        type: str
+        value: x86
+        doc: Target architecture.
+        values:
+        - {value: x86, desc: 64-bit x86.}
+        - {value: arm, desc: 64-bit ARM.}
+
+  - name: Image
+    uses: Artifact
+    doc: |
+      A linked executable.
+
+  - name: Report
+    doc: |
+      A human-readable summary. Nothing consumes it -- it is the end of the
+      line, which is a fact a reader should be able to see.
+
+  - name: Unused
+    doc: |
+      Declared and referenced by nothing at all: no producer, no consumer, no
+      subtype. A real case (a type added ahead of the task that will emit it),
+      and the page has to say so rather than rendering an empty section that
+      reads as "not documented yet".
+
+  tasks:
+  - name: CompileC
+    scope: export
+    desc: Compile C sources
+    produces:
+    - type: types.ObjFile
+      arch: x86
+
+  - name: CompileAsm
+    scope: export
+    desc: Assemble assembly sources
+    produces:
+    - type: types.ObjFile
+      arch: arm
+
+  - name: Link
+    scope: export
+    desc: Link objects into an image
+    consumes:
+    - type: types.ObjFile
+    produces:
+    - type: types.Image
+
+  - name: Package
+    scope: export
+    desc: Package an image for delivery
+    # Attribute-qualified: a different requirement from Link's bare ObjFile,
+    # and an index keyed on the type name alone would merge the two.
+    consumes:
+    - type: types.ObjFile
+      arch: arm
+    produces:
+    - type: types.Report

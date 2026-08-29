@@ -1,0 +1,343 @@
+{
+  "kind": "root",
+  "name": "simple.run",
+  "package": "simple",
+  "desc": "Run the thing",
+  "doc": "The long form of what ``run`` does.\n\nIt has more than one paragraph, because the renderer has to handle\nthat and a one-line ``doc:`` would not prove it.\n",
+  "scope": [
+    "root"
+  ],
+  "facets": [],
+  "srcinfo": {
+    "file": "flow.yaml",
+    "line": 33
+  },
+  "uses_chain": [],
+  "params": [
+    {
+      "name": "backend",
+      "type": "str",
+      "default": "vlt",
+      "default_expr": null,
+      "desc": "",
+      "doc": "Simulation backend.",
+      "declared_by": "simple.run",
+      "overridden_by": null,
+      "inherited": false,
+      "values": [
+        {
+          "value": "vlt",
+          "desc": "Verilator."
+        },
+        {
+          "value": "vcs",
+          "desc": "Synopsys VCS."
+        }
+      ],
+      "values_open": true,
+      "cli": {
+        "name": "backend",
+        "short": null,
+        "hidden": false
+      },
+      "define": "-D run.backend=VALUE"
+    },
+    {
+      "name": "build",
+      "type": "str",
+      "default": "opt",
+      "default_expr": "${{ build }}",
+      "desc": "",
+      "doc": "Build flavor. Defaults to the package-level ``build`` variable, so\nthe rendered default must show the resolved value *and* say where\nit came from.\n",
+      "declared_by": "simple.run",
+      "overridden_by": null,
+      "inherited": false,
+      "values": [],
+      "values_open": false,
+      "cli": {
+        "name": "build",
+        "short": null,
+        "hidden": false
+      },
+      "define": "-D run.build=VALUE"
+    },
+    {
+      "name": "jobs",
+      "type": "int",
+      "default": 1,
+      "default_expr": null,
+      "desc": "",
+      "doc": "Parallel job count.",
+      "declared_by": "simple.run",
+      "overridden_by": null,
+      "inherited": false,
+      "values": [],
+      "values_open": false,
+      "cli": {
+        "name": "jobs",
+        "short": "J",
+        "hidden": false
+      },
+      "define": "-D run.jobs=VALUE"
+    },
+    {
+      "name": "mode",
+      "type": "str",
+      "default": "normal",
+      "default_expr": null,
+      "desc": "",
+      "doc": "How much output to produce.",
+      "declared_by": "simple.run",
+      "overridden_by": null,
+      "inherited": false,
+      "values": [
+        {
+          "value": "quiet",
+          "desc": "Errors only."
+        },
+        {
+          "value": "normal",
+          "desc": "The usual amount."
+        },
+        {
+          "value": "full",
+          "desc": "Everything, including per-step timing."
+        }
+      ],
+      "values_open": false,
+      "cli": {
+        "name": "mode",
+        "short": null,
+        "hidden": false
+      },
+      "define": "-D run.mode=VALUE"
+    },
+    {
+      "name": "name",
+      "type": "str",
+      "default": "",
+      "default_expr": null,
+      "desc": "",
+      "doc": "Declared with no value; the engine defaults it to the empty string.",
+      "declared_by": "simple.run",
+      "overridden_by": null,
+      "inherited": false,
+      "values": [],
+      "values_open": false,
+      "cli": null,
+      "define": "-D run.name=VALUE"
+    },
+    {
+      "name": "secret",
+      "type": "str",
+      "default": "",
+      "default_expr": null,
+      "desc": "",
+      "doc": "Accepted, but kept out of help.",
+      "declared_by": "simple.run",
+      "overridden_by": null,
+      "inherited": false,
+      "values": [],
+      "values_open": false,
+      "cli": {
+        "name": "secret",
+        "short": null,
+        "hidden": true
+      },
+      "define": "-D run.secret=VALUE"
+    },
+    {
+      "name": "top",
+      "type": "str",
+      "default": "tb_top",
+      "default_expr": null,
+      "desc": "",
+      "doc": "Top-level module. No flag; set it with -D.",
+      "declared_by": "simple.run",
+      "overridden_by": null,
+      "inherited": false,
+      "values": [],
+      "values_open": false,
+      "cli": null,
+      "define": "-D run.top=VALUE"
+    },
+    {
+      "name": "trace",
+      "type": "bool",
+      "default": false,
+      "default_expr": null,
+      "desc": "",
+      "doc": "Emit a waveform trace.",
+      "declared_by": "simple.run",
+      "overridden_by": null,
+      "inherited": false,
+      "values": [],
+      "values_open": false,
+      "cli": {
+        "name": "trace",
+        "short": null,
+        "hidden": false
+      },
+      "define": "-D run.trace=VALUE"
+    }
+  ],
+  "usage": {
+    "task": "simple.run",
+    "prog": "dfm run",
+    "desc": "Run the thing",
+    "doc": "The long form of what ``run`` does.\n\nIt has more than one paragraph, because the renderer has to handle\nthat and a one-line ``doc:`` would not prove it.\n",
+    "usage": "dfm run simple.run [run-options]",
+    "args": [
+      {
+        "name": "--backend",
+        "short": null,
+        "param": "backend",
+        "type": "STR",
+        "default": "vlt",
+        "help": "Simulation backend.",
+        "choices": [
+          "vlt",
+          "vcs"
+        ],
+        "choices_doc": [
+          {
+            "value": "vlt",
+            "desc": "Verilator."
+          },
+          {
+            "value": "vcs",
+            "desc": "Synopsys VCS."
+          }
+        ],
+        "choices_open": true,
+        "define": "-D run.backend=VALUE"
+      },
+      {
+        "name": "--build",
+        "short": null,
+        "param": "build",
+        "type": "STR",
+        "default": "opt",
+        "help": "Build flavor. Defaults to the package-level ``build`` variable, so",
+        "choices": null,
+        "choices_doc": null,
+        "choices_open": false,
+        "define": "-D run.build=VALUE"
+      },
+      {
+        "name": "--jobs",
+        "short": "-J",
+        "param": "jobs",
+        "type": "INT",
+        "default": 1,
+        "help": "Parallel job count.",
+        "choices": null,
+        "choices_doc": null,
+        "choices_open": false,
+        "define": "-D run.jobs=VALUE"
+      },
+      {
+        "name": "--mode",
+        "short": null,
+        "param": "mode",
+        "type": "STR",
+        "default": "normal",
+        "help": "How much output to produce.",
+        "choices": [
+          "quiet",
+          "normal",
+          "full"
+        ],
+        "choices_doc": [
+          {
+            "value": "quiet",
+            "desc": "Errors only."
+          },
+          {
+            "value": "normal",
+            "desc": "The usual amount."
+          },
+          {
+            "value": "full",
+            "desc": "Everything, including per-step timing."
+          }
+        ],
+        "choices_open": false,
+        "define": "-D run.mode=VALUE"
+      },
+      {
+        "name": null,
+        "short": null,
+        "param": "name",
+        "type": "STR",
+        "default": "",
+        "help": "Declared with no value; the engine defaults it to the empty string.",
+        "choices": null,
+        "choices_doc": null,
+        "choices_open": false,
+        "define": "-D run.name=VALUE"
+      },
+      {
+        "name": null,
+        "short": null,
+        "param": "secret",
+        "type": "STR",
+        "default": "",
+        "help": "Accepted, but kept out of help.",
+        "choices": null,
+        "choices_doc": null,
+        "choices_open": false,
+        "define": "-D run.secret=VALUE"
+      },
+      {
+        "name": null,
+        "short": null,
+        "param": "top",
+        "type": "STR",
+        "default": "tb_top",
+        "help": "Top-level module. No flag; set it with -D.",
+        "choices": null,
+        "choices_doc": null,
+        "choices_open": false,
+        "define": "-D run.top=VALUE"
+      },
+      {
+        "name": "--trace",
+        "short": null,
+        "param": "trace",
+        "type": "BOOL",
+        "default": false,
+        "help": "Emit a waveform trace.",
+        "choices": null,
+        "choices_doc": null,
+        "choices_open": false,
+        "define": "-D run.trace=VALUE"
+      }
+    ]
+  },
+  "consumes": "ConsumesE.All",
+  "consumes_declared": false,
+  "produces": [],
+  "passthrough": "PassthroughE.Unused",
+  "needs": [],
+  "tags": [],
+  "requires": [],
+  "examples": [
+    {
+      "title": "Run with defaults",
+      "code": "dfm run run",
+      "caption": null,
+      "lang": "shell"
+    },
+    {
+      "title": "Pick a backend",
+      "code": "dfm run run --backend vcs",
+      "caption": "Backends form an open set, so an unlisted one warns.",
+      "lang": "shell"
+    }
+  ],
+  "behavior": {
+    "rundir": "unique"
+  },
+  "implementations": []
+}
