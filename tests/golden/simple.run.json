@@ -327,13 +327,27 @@
       "title": "Run with defaults",
       "code": "dfm run run",
       "caption": null,
-      "lang": "shell"
+      "lang": "shell",
+      "origin": "flow",
+      "srcinfo": {
+        "file": "flow.yaml",
+        "line": 33
+      },
+      "valid": null,
+      "error": ""
     },
     {
       "title": "Pick a backend",
       "code": "dfm run run --backend vcs",
       "caption": "Backends form an open set, so an unlisted one warns.",
-      "lang": "shell"
+      "lang": "shell",
+      "origin": "flow",
+      "srcinfo": {
+        "file": "flow.yaml",
+        "line": 33
+      },
+      "valid": null,
+      "error": ""
     }
   ],
   "behavior": {

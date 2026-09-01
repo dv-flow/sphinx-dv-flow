@@ -1,0 +1,65 @@
+# Fixture: `select:` families -- the variant lattice (§6.3).
+#
+# A family's cells are a PRODUCT of axes, so a graph is the wrong shape and a
+# flat list of names hides the structure. The three axis counts render three
+# different ways, and each is here once:
+#
+#   OneAxis    a labelled row of cells.
+#   TwoAxis    a grid, axes on the margins, default cell marked.
+#   ThreeAxis  no honest 2-D picture of a 3-D product space exists, so it is a
+#              table with one column per axis. This is the case a renderer is
+#              most tempted to fake.
+#
+# `default:` is marked in every form: "what happens if I don't say" is the most
+# common question a family page has to answer.
+package:
+  name: variants
+  desc: Addressable variants
+
+  imports:
+  - std
+
+  tasks:
+  - name: OneAxis
+    scope: root
+    desc: One dimension
+    strategy:
+      select:
+        axes:
+          sim: [vlt, vcs]
+      # The recipe each cell is built from lives under `strategy:`, not as the
+      # task's own body -- a cell IS an artifact, so there is exactly one.
+      body:
+      - name: build
+        uses: std.Message
+        with: {msg: "${{ this.sim }}"}
+
+  - name: TwoAxis
+    scope: root
+    desc: Two dimensions with an explicit default
+    strategy:
+      select:
+        axes:
+          view: [rtl, tlm]
+          build: [dbg, opt]
+        default:
+          view: tlm
+          build: opt
+      body:
+      - name: build
+        uses: std.Message
+        with: {msg: "${{ this.view }} ${{ this.build }}"}
+
+  - name: ThreeAxis
+    scope: root
+    desc: Three dimensions -- no honest grid exists
+    strategy:
+      select:
+        axes:
+          sim: [vlt, vcs]
+          view: [rtl, tlm]
+          build: [dbg, opt]
+      body:
+      - name: build
+        uses: std.Message
+        with: {msg: "${{ this.sim }}"}

@@ -9,6 +9,8 @@ import fnmatch
 from typing import List, Optional
 
 from .classify import DEFAULT_KINDS, classify, is_documented_by_default
+from .config import documented_configs
+from .filter import documented_filters
 from .lifecycle import read as read_lifecycle
 from .loader import iter_tasks, iter_types
 from .model import PackageDoc, SrcRef
@@ -129,6 +131,8 @@ def extract_package(pkg, internal: bool = False, **kw) -> PackageDoc:
         srcinfo=src,
         tasks=[t.name for t in tasks],
         types=[t.name for t in documented_types(pkg)],
+        configs=[c.name for c in documented_configs(pkg)],
+        filters=[f.name for f in documented_filters(pkg, internal=internal)],
         imports=_imports(pkg),
         groups=[(kind, [t.name for t in group])
                 for kind, group in group_by_kind(tasks)],

@@ -226,3 +226,50 @@ def test_the_document_is_json_serializable(loaded):
     for name in result.pkg.task_m:
         doc = extract_task(result.pkg.task_m[name], result.pkg, result.loader)
         json.loads(dumps(doc))
+
+
+# ------------------------------------------------------- documented outputs
+
+def test_produces_doc_is_separated_from_attributes(loaded):
+    """`doc:` describes the artifact; it is not something to match on.
+
+    The engine excludes it from matching and from evaluation, and extraction
+    has to make the same split -- otherwise a renderer would present a task's
+    prose as an attribute a consumer could require.
+    """
+    result = loaded["types"]
+    doc = extract_task(result.pkg.task_m["types.Package"],
+                       result.pkg, result.loader)
+    entry = doc.produces[0]
+    assert entry.type == "types.Report"
+    assert entry.doc == "${{ task_rundir }}/summary.txt"
+    assert entry.attrs == {}
+
+
+def test_produces_doc_reaches_the_page_unevaluated(loaded):
+    """The unresolved `${{ task_rundir }}` is the part that generalises.
+
+    A resolved path would be true only on the machine that built the docs, and
+    outside a run there is nothing for it to resolve to.
+    """
+    result = loaded["types"]
+    doc = extract_task(result.pkg.task_m["types.Package"],
+                       result.pkg, result.loader)
+    assert "${{" in doc.produces[0].doc
+
+
+def test_an_undocumented_output_has_empty_doc(loaded):
+    """Absence stays absence -- the type alone is a complete declaration."""
+    result = loaded["types"]
+    doc = extract_task(result.pkg.task_m["types.Link"],
+                       result.pkg, result.loader)
+    assert doc.produces[0].type == "types.Image"
+    assert doc.produces[0].doc == ""
+
+
+def test_attributes_are_still_attributes(loaded):
+    """The `doc:` exclusion must not swallow real attributes."""
+    result = loaded["types"]
+    doc = extract_task(result.pkg.task_m["types.CompileC"],
+                       result.pkg, result.loader)
+    assert doc.produces[0].attrs == {"arch": "x86"}

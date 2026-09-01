@@ -87,11 +87,21 @@ def test_desc_and_doc_match(simple_root):
 
 
 def test_examples_match(simple_root):
+    """The authored content of every example, as `dfm` reports it.
+
+    Compared field by field rather than whole: `ExampleDoc` also carries where
+    the example came from and whether it still loads, and neither is something
+    `dfm show` knows or should. What has to agree is what the author wrote --
+    which is the whole of ground rule 2's claim here.
+    """
     expected = _dfm(simple_root, "simple.run")
     result = load_project(simple_root)
     doc = extract_task(result.pkg.task_m["simple.run"],
                        result.pkg, result.loader)
-    assert [e.to_dict() for e in doc.examples] == expected["examples"]
+    authored = [{k: e.to_dict()[k]
+                 for k in ("title", "code", "caption", "lang")}
+                for e in doc.examples]
+    assert authored == expected["examples"]
 
 
 def test_tags_match(request):
@@ -117,3 +127,48 @@ def test_inherited_params_match_on_a_derived_task(request):
     assert {p.name for p in doc.params} == set(expected["params"])
     for p in doc.params:
         assert str(p.default) == expected["param_values"][p.name], p.name
+
+
+def _root_tasks():
+    """Every runnable task in every fixture, as (root, name) pairs.
+
+    Discovered rather than listed, so a fixture added later is covered without
+    anyone remembering to add it here. That matters more than it looks: the
+    guard is only as good as its coverage, and a hand-maintained list is
+    exactly the thing that stops matching reality.
+    """
+    from dv_flow.doc.classify import classify
+
+    base = os.path.join(
+        os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "data")
+    out = []
+    for entry in sorted(os.listdir(base)):
+        root = os.path.join(base, entry)
+        if not os.path.isdir(root):
+            continue
+        result = load_project(root)
+        if not result.ok:
+            continue
+        for name, task in (result.pkg.task_m or {}).items():
+            if classify(task) == 'root':
+                out.append((root, name))
+    return out
+
+
+@pytest.mark.parametrize("root,name", _root_tasks(),
+                         ids=lambda v: v if isinstance(v, str) and '/' not in v
+                         else os.path.basename(str(v)))
+def test_every_root_task_agrees_on_usage(root, name):
+    """The `--usage` view, for every runnable task in every fixture.
+
+    `simple.run` alone proves the wiring; this proves it holds across the
+    shapes -- inherited flags, open value sets, a task whose parameters come
+    from a package variable. A contract checked on one example is a contract
+    checked on one example.
+    """
+    expected = _dfm(root, name, "--usage")
+
+    result = load_project(root)
+    doc = extract_task(result.pkg.task_m[name], result.pkg, result.loader)
+
+    assert json.loads(json.dumps(doc.usage, default=str)) == expected

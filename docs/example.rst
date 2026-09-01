@@ -80,3 +80,111 @@ Asking for one by name gets it, banner and all:
 .. dvf:autotask:: lifecycle.Retired
    :root: ../tests/data/lifecycle
    :noindex:
+
+Sub-flows
+=========
+
+A compound task gets its diagram without being asked: the body is what the task
+*is*, so a page describing one without showing its shape has left out the part
+the reader came for. Note ``Nested``'s ``inner`` box — the subroutine shape says
+there is more inside, and it links to ``compound.Build``'s own page.
+
+``Dataflow`` shows the two edge kinds together: a solid ``needs:`` arrow that
+the author declared, and a dashed object-flow arrow that was *recovered* by
+matching produces against consumes.
+
+.. dvf:autopackage::
+   :root: ../tests/data/compound
+   :types:
+
+Parameterized bodies
+====================
+
+``Sweep`` runs its body for each of six combinations. The diagram draws it once,
+inside a region labelled by the axes — smaller than six near-identical boxes,
+truer to what the author wrote, and identical on every machine.
+
+.. dvf:autopackage::
+   :root: ../tests/data/matrix
+
+Class views
+===========
+
+Each box lists the parameters *that level introduces*. ``Leaf`` shows
+``overridden = leaf-default`` because it changed one default, and
+``flag_removed (override)`` because it re-declared a parameter without giving
+it a new value.
+
+.. dvf:inheritance:: inherit.Leaf
+   :root: ../tests/data/inherit
+
+With descendants, bounded, and with the ``requires:`` contract drawn as a
+realization from the level that imposed it:
+
+.. dvf:inheritance:: abstract.Backend
+   :root: ../tests/data/abstract
+   :descendants:
+
+Variant families
+================
+
+``select:`` declares a catalog of independently-addressable cells. One axis
+renders as a row, two as a grid, and three or more as a table — because no
+honest two-dimensional picture of a higher-dimensional product exists.
+
+.. dvf:autopackage::
+   :root: ../tests/data/variants
+
+Maps
+====
+
+The package-wide dataflow map is what a library's landing page should open
+with. Note that the type sits *between* producers and consumers rather than
+being a label on a direct edge: routing through it says what is true — these
+produce it, those accept it — with N+M edges instead of N×M.
+
+.. dvf:dataflow::
+   :root: ../tests/data/types
+
+The component view: what the package provides, what it needs from outside, and
+what it imports. A type both produced and consumed here is internal plumbing and
+does not appear as a requirement.
+
+.. dvf:packagediagram::
+   :root: ../tests/data/library
+
+Configurations and filters
+==========================
+
+A configuration is chosen by whoever runs the flow, which makes it the one thing
+in a package selected by someone who did not write it. Its page leads with the
+command that selects it, then names what it changes — ``ci.yaml`` is named
+rather than expanded, because what a fragment contains is only in the package
+once the configuration is selected, and this build loaded the package without it.
+
+The filters below are documented from their declarations and say plainly that
+the engine does not yet resolve them. ``paths_of`` is unscoped, so it is absent
+by default, and ``internal_helper`` is ``local``, so it is absent always.
+
+.. dvf:autopackage::
+   :root: ../tests/data/configs
+   :types:
+
+Examples
+========
+
+``Compile`` has two authored examples, one of which is a complete flow fragment
+and is therefore **loaded** during this build — if it stopped parsing, this page
+would stop building. ``Bare`` has none, so its snippet is synthesized from the
+declaration and labelled as such.
+
+The fixture's third task, ``Broken``, carries an example the engine refuses. It
+is deliberately *not* documented here: the warning it raises is correct, and
+``-W`` would fail this build over a fixture behaving exactly as intended. What
+that warning looks like is pinned in ``tests/build/test_examples.py`` instead.
+
+.. dvf:autotask:: examples.Compile
+   :root: ../tests/data/examples
+
+.. dvf:autotask:: examples.Bare
+   :root: ../tests/data/examples

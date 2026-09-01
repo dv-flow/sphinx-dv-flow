@@ -1,0 +1,84 @@
+# Fixture: compound tasks -- the sub-flow / activity view (§6.2).
+#
+# Shaped so each structural feature the diagram has to render appears exactly
+# once, and so the things that are easy to conflate are visibly different:
+#
+#   Build      two INDEPENDENT subtasks (fork) feeding a third (join). Nothing
+#              declares needs between gen-a and gen-b, so the diagram must show
+#              them as parallel rather than inventing an order from file order.
+#   Nested     contains a compound subtask. Depth is bounded, so at the default
+#              depth `Nested` shows `inner` as one box linking to its own page
+#              rather than inlining its body.
+#   Guarded    a subtask with `iff:`, which is a guard on the incoming edge --
+#              a condition, not a separate node.
+#   Dataflow   `produce` -> `consume` with matching produces/consumes but NO
+#              declared `needs:`. The object-flow edge is INFERRED, and must be
+#              marked as such: an inference presented as a declaration is a lie.
+package:
+  name: compound
+  desc: Sub-flows worth drawing
+
+  imports:
+  - std
+
+  types:
+  - name: Obj
+    doc: |
+      An intermediate artifact. Exists so the sub-flow has a dataflow edge to
+      infer, which is what the flow diagram draws between its subtasks.
+
+  tasks:
+  - name: Build
+    scope: root
+    desc: Two generators feeding a linker
+    body:
+    - name: gen-a
+      uses: std.Message
+      with: {msg: a}
+    - name: gen-b
+      uses: std.Message
+      with: {msg: b}
+    - name: link
+      uses: std.Message
+      with: {msg: link}
+      needs: [gen-a, gen-b]
+
+  - name: Nested
+    scope: root
+    desc: Contains a compound subtask
+    body:
+    - name: prep
+      uses: std.Message
+      with: {msg: prep}
+    - name: inner
+      uses: compound.Build
+      needs: [prep]
+
+  - name: Guarded
+    scope: root
+    desc: A subtask behind a condition
+    body:
+    - name: always
+      uses: std.Message
+      with: {msg: always}
+    - name: sometimes
+      uses: std.Message
+      with: {msg: sometimes}
+      iff: ${{ false }}
+      needs: [always]
+
+  - name: Dataflow
+    scope: root
+    desc: An inferred object flow
+    body:
+    - name: produce
+      uses: std.Message
+      with: {msg: produce}
+      produces:
+      - type: compound.Obj
+    - name: consume
+      uses: std.Message
+      with: {msg: consume}
+      consumes:
+      - type: compound.Obj
+      needs: [produce]

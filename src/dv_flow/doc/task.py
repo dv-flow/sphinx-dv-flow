@@ -69,29 +69,58 @@ def _tag_docs(tags) -> List[TagDoc]:
 
 
 def _produces_docs(produces) -> List[ProducesDoc]:
-    """`produces:` entries, splitting the item type from its attributes.
+    """`produces:` entries, split into type, attributes and prose.
 
-    `type` is the item type; every other key is an attribute carried on the
-    produced item (`filetype`, and whatever a package invents). They are
-    separated here so a renderer can cross-reference the type without having to
-    know which keys are structural.
+    `type` is the item type. `doc` is prose about the specific artifact and is
+    NOT an attribute -- the engine excludes it from matching and from
+    expression evaluation, and the extraction has to make the same split or the
+    renderer would show a task's documentation as something a consumer can
+    match on. Everything else IS an attribute (`filetype`, and whatever a
+    package invents).
     """
     out = []
     for entry in produces or []:
         if isinstance(entry, dict):
-            attrs = {k: v for k, v in entry.items() if k != 'type'}
-            out.append(ProducesDoc(type=str(entry.get('type', '')), attrs=attrs))
+            attrs = {k: v for k, v in entry.items()
+                     if k not in ('type',) and k not in _NON_ATTRIBUTE_KEYS}
+            out.append(ProducesDoc(
+                type=str(entry.get('type', '')),
+                attrs=attrs,
+                doc=str(entry.get('doc', '') or '')))
         else:
+            # `produces: std.FileSet` -- shorthand for `{type: std.FileSet}`.
             out.append(ProducesDoc(type=str(entry)))
     return out
 
 
-def _example_docs(examples) -> List[ExampleDoc]:
+def _non_attribute_keys():
+    try:
+        from dv_flow.mgr.type_match import NON_ATTRIBUTE_KEYS
+        return set(NON_ATTRIBUTE_KEYS)
+    except ImportError:
+        # Older dv-flow-mgr. `doc` is inert there -- it would show as an
+        # attribute rather than as prose, which is wrong but not harmful.
+        return {'doc'}
+
+
+_NON_ATTRIBUTE_KEYS = _non_attribute_keys()
+
+
+def _example_docs(examples, srcinfo=None) -> List[ExampleDoc]:
+    """Authored examples, carrying the declaring task's location.
+
+    The location is the task, not the example: `ExampleDef` records none of its
+    own. It is close enough to be actionable -- a validation failure has to send
+    the reader to the flow file that contains the broken snippet, and "this
+    task, in this file" is where they will start looking anyway.
+    """
     return [ExampleDoc(
         title=getattr(ex, 'title', None),
         code=getattr(ex, 'code', '') or '',
         caption=getattr(ex, 'caption', None),
-        lang=getattr(ex, 'lang', 'yaml') or 'yaml')
+        lang=getattr(ex, 'lang', 'yaml') or 'yaml',
+        origin='flow',
+        srcinfo=srcinfo)
         for ex in examples or []]
 
 
@@ -190,7 +219,7 @@ def extract_task(task, pkg=None, loader=None,
         # subject to all three levels, and showing only what the task declared
         # itself would under-report the contract a reader has to satisfy.
         requires=_tag_docs(_collect_requires(task)),
-        examples=_example_docs(getattr(task, 'examples', None)),
+        examples=_example_docs(getattr(task, 'examples', None), _srcref(task)),
         behavior=_behavior(task),
     )
 

@@ -76,6 +76,57 @@ Options
     Include package-internal tasks. Accepts ``true``/``false``; bare
     ``:internal:`` means true. Overrides ``dvflow_internal``.
 
+``:configs:``, ``:filters:``
+    Include configurations and filters. Both default to **true**, unlike
+    ``:types:`` — see :doc:`../guide/configs_filters` for why.
+
+``dvf:autoconfig``
+==================
+
+.. code-block:: rst
+
+    .. dvf:autoconfig::            # every configuration
+    .. dvf:autoconfig:: debug      # one
+
+Documents a package configuration: how to select it, what it extends, and what
+it redefines. See :doc:`../guide/configs_filters`.
+
+Options
+-------
+
+``:root:``, ``:config:``, ``:no-source:``, ``:noindex:``
+    As for ``dvf:autotask``.
+
+``:members:``, ``:exclude:``
+    Glob patterns over configuration names.
+
+``dvf:autofilter``
+==================
+
+.. code-block:: rst
+
+    .. dvf:autofilter::            # every documented filter
+    .. dvf:autofilter:: by_arch    # one
+
+Documents a filter: its signature as written at a call site, its arguments and
+the positions they bind to, and its implementation.
+
+``local`` filters are refused even when named explicitly — a reader outside the
+fragment cannot invoke one, so documenting it would publish a call that cannot
+be written.
+
+Options
+-------
+
+``:root:``, ``:config:``, ``:no-source:``, ``:noindex:``
+    As for ``dvf:autotask``.
+
+``:internal:``
+    Include unscoped (package-internal) filters.
+
+``:members:``, ``:exclude:``
+    Glob patterns over filter names.
+
 Roles
 =====
 
@@ -91,7 +142,10 @@ Roles
 ``:dvf:package:``
     Cross-reference a package.
 
-An unresolved reference degrades to literal text rather than warning. That is
-deliberate for now: it lets the dataflow blocks emit references before the
-targets exist, so adding the type directive later links up every existing page
-with no change to what the directives emit.
+``:dvf:config:``, ``:dvf:filter:``
+    Cross-reference a configuration or a filter.
+
+An unresolved reference degrades to literal text rather than warning, so the
+name stays on the page even with no link to follow. A reference you *wrote*
+warns, with suggestions; a reference the extension generated does not. See
+:doc:`roles`.

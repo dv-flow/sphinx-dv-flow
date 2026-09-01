@@ -40,6 +40,7 @@ class RecordingApp:
         self.config_values = []
         self.domains = []
         self.directives = []
+        self.indices = []
         self.events = []
 
     def add_config_value(self, name, default, rebuild, **kw):
@@ -50,6 +51,9 @@ class RecordingApp:
 
     def add_directive_to_domain(self, domain, name, cls, **kw):
         self.directives.append((domain, name))
+
+    def add_index_to_domain(self, domain, index, **kw):
+        self.indices.append((domain, index.name))
 
     def connect(self, event, handler, **kw):
         self.events.append(event)
@@ -67,8 +71,11 @@ def test_setup_registers_the_domain_and_directives():
     sphinx_dv_flow.setup(app)
 
     assert [d.name for d in app.domains] == ["dvf"]
-    assert set(app.directives) == {("dvf", "autotask"), ("dvf", "autotype"),
-                                   ("dvf", "autopackage")}
+    assert set(app.directives) == {
+        ("dvf", "autotask"), ("dvf", "autotype"), ("dvf", "autopackage"),
+        ("dvf", "flowdiagram"), ("dvf", "inheritance"), ("dvf", "dataflow"),
+        ("dvf", "packagediagram"), ("dvf", "elaborated"),
+        ("dvf", "autoconfig"), ("dvf", "autofilter")}
 
 
 def test_setup_registers_the_config_values():
@@ -78,11 +85,39 @@ def test_setup_registers_the_config_values():
 
     names = {name for name, _, _ in app.config_values}
     assert names == {"dvflow_root", "dvflow_config", "dvflow_internal",
-                     "dvflow_show_source"}
-    # Every one of these changes WHAT gets extracted, so all must invalidate
-    # the environment. A setting that rebuilds on 'html' instead would leave a
+                     "dvflow_show_source", "dvflow_diagram_depth",
+                     "dvflow_diagram_max_nodes", "dvflow_diagram_dataflow",
+                     "dvflow_diagram_backend", "dvflow_elaborate",
+                     "dvflow_coverage", "dvflow_coverage_warn",
+                     "dvflow_examples_dir", "dvflow_examples_generate",
+                     "dvflow_examples_validate", "dvflow_examples_diagrams",
+                     "dvflow_intersphinx_packages", "dvflow_schema_url"}
+
+    # Every setting that changes WHAT gets extracted must invalidate the
+    # environment. A setting that rebuilds on 'html' instead would leave a
     # stale page that only `-E` fixes, with nothing to suggest why.
-    assert {rebuild for _, _, rebuild in app.config_values} == {"env"}
+    extraction = {name: rebuild for name, _, rebuild in app.config_values
+                  if not name.startswith('dvflow_coverage')}
+    assert set(extraction.values()) == {"env"}
+
+    # The coverage settings are the exception, and deliberately: they report on
+    # what was extracted rather than changing it, so re-reading every document
+    # because someone asked for a report would be a rebuild for nothing.
+    assert {rebuild for name, _, rebuild in app.config_values
+            if name.startswith('dvflow_coverage')} == {""}
+
+
+def test_setup_registers_the_indices():
+    """An alphabetical name list is the index a tool produces when nobody
+    asked what a reader is looking for. These answer the reverse questions --
+    what produces this type, what consumes it, what is deprecated -- which is
+    what a flow library makes hard to find out."""
+    import sphinx_dv_flow
+    app = RecordingApp()
+    sphinx_dv_flow.setup(app)
+
+    assert {name for _, name in app.indices} == {
+        "tasks", "types", "produced", "consumed", "tags"}
 
 
 def test_setup_clears_the_project_cache_on_build():

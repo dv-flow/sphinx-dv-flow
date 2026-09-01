@@ -7,7 +7,9 @@ reader actually arrives with: "I have an ObjFile, what can take one?"
 
 from docutils import nodes
 
-from .blocks import _field_list, _task_xref, _type_xref, description, source
+from . import tables
+from .blocks import (_field_list, _task_xref, _type_xref, description,
+                     source)
 from .docfield import first_paragraph
 
 
@@ -26,55 +28,23 @@ def _fields_table(doc):
     if not doc.params:
         return []
 
-    table = nodes.table(classes=['dvf-type-fields'])
-    group = nodes.tgroup(cols=4)
-    table += group
-    for _ in range(4):
-        group += nodes.colspec(colwidth=1)
-
-    head = nodes.thead()
-    row = nodes.row()
-    for label in ("Field", "Type", "Default", "Description"):
-        entry = nodes.entry()
-        entry += nodes.paragraph(text=label)
-        row += entry
-    head += row
-    group += head
-
-    body = nodes.tbody()
+    rows = []
     for param in doc.params:
-        row = nodes.row()
-
-        for content in (nodes.literal(text=param.name),
-                        nodes.literal(text=param.type)):
-            entry = nodes.entry()
-            para = nodes.paragraph()
-            para += content
-            entry += para
-            row += entry
-
-        entry = nodes.entry()
-        para = nodes.paragraph()
-        if param.default in (None, ""):
-            para += nodes.Text("—")
-        else:
-            para += nodes.literal(text=str(param.default))
-        entry += para
-        row += entry
-
-        entry = nodes.entry()
-        para = nodes.paragraph()
-        text = first_paragraph(param.doc) or param.desc or ""
-        para += nodes.Text(text)
+        default = (nodes.Text("—") if param.default in (None, "")
+                   else nodes.literal(text=str(param.default)))
+        desc = [nodes.Text(first_paragraph(param.doc) or param.desc or "")]
         if param.inherited and param.declared_by:
-            para += nodes.Text(" ")
-            para += nodes.emphasis(text="(from %s)" % param.declared_by)
-        entry += para
-        row += entry
+            desc.append(nodes.Text(" "))
+            desc.append(nodes.emphasis(text="(from %s)" % param.declared_by))
+        rows.append([
+            nodes.literal(text=param.name),
+            nodes.literal(text=param.type),
+            default,
+            desc,
+        ])
 
-        body += row
-    group += body
-    return [table]
+    return [tables.build(("Field", "Type", "Default", "Description"), rows,
+                         classes=['dvf-type-fields'])]
 
 
 def render(doc, state, base_dir=None, show_source=True):

@@ -10,12 +10,21 @@ present on one and absent from the other.
 from . import blocks, options, params
 
 
-def render(doc, state, base_dir=None, show_source=True):
-    """Body nodes for `doc`, chosen by its kind."""
+def render(doc, state, base_dir=None, show_source=True, diagram=None,
+           lattice=None):
+    """Body nodes for `doc`, chosen by its kind.
+
+    `diagram` and `lattice` are prebuilt, supplied by the directive when the
+    task has one. Passed in rather than built here because building them needs
+    the loaded project, and this layer deliberately sees only the extraction
+    document.
+    """
     renderer = {
         'root': _root,
         'library': _library,
         'abstract': _abstract,
+        'compound': _compound,
+        'variants': _variants,
     }.get(doc.kind, _library)
 
     out = []
@@ -23,7 +32,13 @@ def render(doc, state, base_dir=None, show_source=True):
     # Before the description: a reader who stops early is exactly the reader
     # who most needs to know the task is deprecated.
     out += blocks.lifecycle(doc)
-    out += renderer(doc, state, base_dir)
+    out += (renderer(doc, state, base_dir, lattice)
+            if renderer is _variants else renderer(doc, state, base_dir))
+
+    if diagram is not None and not diagram.is_empty():
+        from . import diagrams as render_diagrams
+        out.append(blocks.section_title("Sub-flow", "body", state))
+        out += render_diagrams.render_model(diagram)
 
     if show_source:
         out += blocks.source(doc, base_dir)
@@ -62,7 +77,7 @@ def _root(doc, state, base_dir):
     # contract, and a section reporting one is noise on a page about a command.
     if doc.consumes_declared or doc.produces:
         out.append(blocks.section_title("Dataflow"))
-        out += blocks.dataflow(doc)
+        out += blocks.dataflow(doc, state)
 
     # A root+export task gets the library view too -- both audiences are real,
     # and the second one is invisible if classification is allowed to swallow it.
@@ -71,8 +86,8 @@ def _root(doc, state, base_dir):
         out += blocks.signature(doc)
         out += params.param_table(doc)
         out += params.value_docs(doc)
-        out += blocks.needs(doc)
-        out += blocks.facts(doc)
+        out += blocks.needs(doc, state)
+        out += blocks.facts(doc, state)
 
     return out
 
@@ -85,17 +100,17 @@ def _library(doc, state, base_dir):
     out += blocks.description(doc, state)
 
     if doc.params:
-        out.append(blocks.section_title("Parameters"))
+        out.append(blocks.section_title("Parameters", "with", state))
         out += params.param_table(doc)
         out += params.value_docs(doc)
 
     out.append(blocks.section_title("Dataflow"))
-    out += blocks.dataflow(doc)
-    out += blocks.needs(doc)
+    out += blocks.dataflow(doc, state)
+    out += blocks.needs(doc, state)
 
     out += blocks.examples(doc, state)
 
-    facts = blocks.facts(doc)
+    facts = blocks.facts(doc, state)
     if facts:
         out.append(blocks.section_title("Behavior"))
         out += facts
@@ -146,7 +161,7 @@ def _abstract(doc, state, base_dir):
     out += params.value_docs(doc)
 
     if doc.requires:
-        out.append(blocks.section_title("Contract"))
+        out.append(blocks.section_title("Contract", "requires", state))
         para = blocks.nodes.paragraph()
         para += blocks.nodes.Text(
             "Anything deriving from this task must satisfy:")
@@ -184,7 +199,7 @@ def _abstract(doc, state, base_dir):
             text="Nothing in this package derives from this task.")
         out.append(para)
 
-    out += blocks.dataflow(doc)
+    out += blocks.dataflow(doc, state)
     out += blocks.examples(doc, state)
 
     return out
@@ -216,3 +231,42 @@ def _with_params(doc, subset):
     clone = copy.copy(doc)
     clone.params = subset
     return clone
+
+
+def _compound(doc, state, base_dir):
+    """The sub-flow view (design §4.4).
+
+    A compound's body is what it is FOR, so the diagram is the centrepiece and
+    the directive supplies it. Everything else is the library view: a compound
+    is still something you `uses:` or `needs:`, and its parameters and dataflow
+    contract matter to whoever does.
+    """
+    return _library(doc, state, base_dir)
+
+
+def _variants(doc, state, base_dir, lattice=None):
+    """The addressable-cells view (design §4.5).
+
+    A family is a catalog, not a task with options: each cell is a task in its
+    own right, named `<family>.<key>`, and the thing a reader needs is the list
+    of names they can actually type. The lattice IS the content here, so it
+    comes before everything except the description.
+    """
+    from . import lattice as render_lattice
+
+    out = []
+    out += blocks.description(doc, state)
+
+    if lattice is not None:
+        out.append(blocks.section_title("Variants", "strategy", state))
+        out += render_lattice.render(lattice)
+
+    if doc.params:
+        out.append(blocks.section_title("Parameters", "with", state))
+        out += params.param_table(doc)
+        out += params.value_docs(doc)
+
+    out += blocks.dataflow(doc, state)
+    out += blocks.needs(doc, state)
+    out += blocks.examples(doc, state)
+    return out

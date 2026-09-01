@@ -118,11 +118,29 @@ class ParamDoc(_Doc):
 
 @dc.dataclass
 class ExampleDoc(_Doc):
-    """A worked example. Documentation, not a test -- nothing runs it."""
+    """A worked example.
+
+    Nothing *runs* an example -- but a flow-fragment example is **loaded**, and
+    that distinction is the whole of §9's validation story: an example that no
+    longer parses is worse than no example, because it is indistinguishable
+    from one that works until someone types it.
+    """
     title: Optional[str] = None
     code: str = ""
     caption: Optional[str] = None
     lang: str = "yaml"
+    # Where the example came from: 'flow' (an `examples:` entry), 'file' (an
+    # adjacent `.rst`), or 'generated'. Rendered, because a generated example is
+    # a synthesis of the declaration rather than something anyone asserted
+    # works, and a reader who cannot tell them apart will trust both equally.
+    origin: str = "flow"
+    srcinfo: Optional[SrcRef] = None
+    # None when the example was not checked -- it is not a flow fragment, or
+    # validation was switched off. `False` with `error` set when the engine
+    # refused it. Three states, because "not checked" and "checked and fine"
+    # are different claims and only one of them is worth making.
+    valid: Optional[bool] = None
+    error: str = ""
 
 
 @dc.dataclass
@@ -141,6 +159,14 @@ class ProducesDoc(_Doc):
     """
     type: str = ""
     attrs: Dict[str, Any] = dc.field(default_factory=dict)
+    # Prose describing the specific artifact, from `doc:` on the entry --
+    # typically the path it lands at ("${{ task_rundir }}/ral_pkg.sv").
+    #
+    # The item TYPE says what kind of thing this is, which is the minimum a
+    # consumer needs; this says which thing, which is what a person needs. It
+    # is carried unevaluated on purpose: the shape of the path documents the
+    # output, where one machine's resolution of it does not.
+    doc: str = ""
 
 
 @dc.dataclass
@@ -212,6 +238,71 @@ class TypeDoc(_Doc):
 
 
 @dc.dataclass
+class ConfigDoc(_Doc):
+    """A named configuration: a pre-selected way to load a package.
+
+    What a reader needs from a configuration is not how it is implemented but
+    two things: what it changes, and what to type to get it. Everything here
+    serves one of those.
+
+    Deliberately absent: the parameters it fixes. `ConfigDef.params` is typed
+    as a list while the merge that consumes it implements only the map form, so
+    neither spelling does anything (PLAN.md U15). A page showing "parameters
+    this configuration fixes" would be describing a mechanism that does not
+    run -- which is worse than saying nothing, because the reader cannot tell.
+    """
+    kind: str = "config"
+    name: str = ""
+    package: str = ""
+    desc: str = ""
+    doc: str = ""
+    srcinfo: Optional[SrcRef] = None
+    # The configuration this one builds on, when it declares `uses:`.
+    uses: Optional[str] = None
+    # Task and type names this configuration redefines. Names only: what the
+    # override *is* belongs to the config, but a reader chasing it wants the
+    # task's own page, which documents the task as loaded by default.
+    tasks: List[str] = dc.field(default_factory=list)
+    types: List[str] = dc.field(default_factory=list)
+    # Extra imports and fragments the configuration pulls in. Named, not
+    # expanded: what a fragment contains depends on selecting the config, and
+    # the package as loaded here does not have it.
+    imports: List[str] = dc.field(default_factory=list)
+    fragments: List[str] = dc.field(default_factory=list)
+    # Package-level `overrides:` entries, as "target -> replacement".
+    overrides: List[Any] = dc.field(default_factory=list)
+
+
+@dc.dataclass
+class FilterDoc(_Doc):
+    """A filter: a named transformation usable on the right of a `|`.
+
+    The signature is the thing a reader is here for -- a filter is invoked in
+    an expression, and what has to be typed is the whole interface.
+    """
+    kind: str = "filter"
+    name: str = ""
+    package: str = ""
+    desc: str = ""
+    doc: str = ""
+    srcinfo: Optional[SrcRef] = None
+    scope: List[str] = dc.field(default_factory=list)
+    params: List[ParamDoc] = dc.field(default_factory=list)
+    # 'expr' (a jq-style expression) or 'run' (a script). Which one it is
+    # changes what the filter can do, so it is a facet rather than prose.
+    impl: str = "expr"
+    # The implementation itself. Shown because a filter is small enough that
+    # its source IS its specification, and because `expr` is the only place
+    # positional `$arg0` binding is visible.
+    body: str = ""
+    shell: str = ""
+    # How it is written at a call site: `${{ inputs | by_arch(arch) }}`. Built
+    # by extraction rather than by a renderer so that every renderer shows the
+    # same call, and so `dvflow-doc dump` carries it.
+    signature: str = ""
+
+
+@dc.dataclass
 class PackageDoc(_Doc):
     """A package: the landing page for a flow library."""
     kind: str = "package"
@@ -223,6 +314,8 @@ class PackageDoc(_Doc):
     # what to inline and a `dump` of one package does not drag in every task.
     tasks: List[str] = dc.field(default_factory=list)
     types: List[str] = dc.field(default_factory=list)
+    configs: List[str] = dc.field(default_factory=list)
+    filters: List[str] = dc.field(default_factory=list)
     imports: List[str] = dc.field(default_factory=list)
     # `[(kind, [task-name])]` in reading order -- what can I run, what can I
     # build with, what can I extend. The grouping is extraction's business

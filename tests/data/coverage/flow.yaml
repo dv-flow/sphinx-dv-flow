@@ -1,0 +1,67 @@
+# Fixture: deliberate documentation gaps, for the §10 coverage report.
+#
+# Every object here is either documented on purpose or undocumented on purpose,
+# and the report has to tell them apart on the published surface only:
+#
+#   Documented    export, with desc -- counted, not a finding
+#   Bare          export, no desc and no doc -- the finding the report exists for
+#   PartlyBare    export, described, but one of its parameters is not
+#   Derived       uses: PartlyBare and adds nothing -- must NOT be charged again
+#                 for the parameter PartlyBare left undocumented, or the count
+#                 becomes a measure of inheritance depth
+#   internalTask  no scope -- counted only under --internal
+#   helper        local -- never counted, not addressable by a reader
+#
+# `Documented` also pins that ONE of desc/doc is enough: demanding both would
+# make this a style check.
+package:
+  name: coverage
+  desc: Deliberate gaps
+
+  imports:
+  - std
+
+  types:
+  - name: Described
+    doc: A type with prose.
+
+  - name: Undescribed
+
+  tasks:
+  - name: Documented
+    scope: export
+    desc: Has a one-line description and nothing else
+    uses: std.Message
+    with:
+      msg:
+        type: str
+        value: ""
+        desc: What to print.
+
+  - name: Bare
+    scope: export
+    uses: std.Message
+
+  - name: PartlyBare
+    scope: export
+    desc: Described, with one described parameter and one bare one
+    uses: std.Message
+    with:
+      described:
+        type: str
+        value: ""
+        desc: This one is documented.
+      bare:
+        type: str
+        value: ""
+
+  - name: Derived
+    scope: export
+    desc: Inherits PartlyBare's parameters and declares none of its own
+    uses: PartlyBare
+
+  - name: internalTask
+    uses: std.Message
+
+  - local: helper
+    uses: std.Message

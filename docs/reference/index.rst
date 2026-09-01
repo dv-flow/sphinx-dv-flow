@@ -9,3 +9,5 @@ Reference
    roles
    config
    extraction
+   diagram_model
+   cross_project

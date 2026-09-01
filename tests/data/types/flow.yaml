@@ -98,4 +98,9 @@ package:
     - type: types.ObjFile
       arch: arm
     produces:
+    # `doc:` names the specific artifact. It is NOT an attribute: it takes no
+    # part in matching and is not evaluated, so the unresolved
+    # `${{ task_rundir }}` reaches the page -- which is the point. A resolved
+    # path would be true only on the machine that built the docs.
     - type: types.Report
+      doc: ${{ task_rundir }}/summary.txt

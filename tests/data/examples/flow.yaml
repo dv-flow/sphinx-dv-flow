@@ -1,0 +1,80 @@
+# Fixture: the three example sources of §9, plus validation.
+#
+#   Compile   two authored examples: a shell command (not a flow fragment, so
+#             never validated) and a `fragment:` that the engine accepts
+#   Broken    an authored fragment the engine REFUSES -- the case validation
+#             exists for, because a broken example is indistinguishable from a
+#             working one until someone types it
+#   Bare      no examples at all, so the generated snippet is what appears
+#   Adjacent  no examples either, but `examples/examples.Adjacent.rst` in the
+#             doc set supplies one, which must win over the generated snippet
+package:
+  name: examples
+  desc: Worked examples
+
+  imports:
+  - std
+
+  tasks:
+  - name: Compile
+    scope: export
+    desc: A task with authored examples
+    examples:
+    - title: From the command line
+      code: dfm run examples.Compile
+      lang: shell
+    - title: In a flow
+      lang: yaml
+      caption: A complete fragment, so the docs build loads it.
+      code: |
+        fragment:
+          tasks:
+          - name: my-build
+            body:
+            - name: compile
+              uses: std.Message
+              with:
+                msg: compiling
+            - name: link
+              uses: std.Message
+              needs: [compile]
+              with:
+                msg: linking
+    uses: std.Message
+    with:
+      msg:
+        type: str
+        value: "compiling"
+        desc: What to print.
+
+  - name: Broken
+    scope: export
+    desc: An example that no longer loads
+    examples:
+    - title: This one rotted
+      lang: yaml
+      code: |
+        fragment:
+          tasks:
+          - name: my-task
+            uses: examples.NoSuchTask
+    uses: std.Message
+
+  - name: Bare
+    scope: export
+    desc: No authored examples, so one is synthesized
+    uses: std.Message
+    with:
+      needed:
+        type: str
+        value: ""
+        desc: No default, so a generated example fills it in.
+      supplied:
+        type: str
+        value: "already set"
+        desc: Has a default, so a minimal example leaves it alone.
+
+  - name: Adjacent
+    scope: export
+    desc: Documented by a file in the doc set
+    uses: std.Message

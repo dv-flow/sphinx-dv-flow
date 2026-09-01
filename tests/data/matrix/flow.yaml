@@ -1,0 +1,40 @@
+# Fixture: parameterized expansion -- the design's main diagram claim (§6.1).
+#
+# An elaborated diagram of a 3x2 matrix is six near-identical boxes that teach a
+# reader nothing about the structure they need to modify. The declared view
+# draws the body ONCE inside a region labelled by its axes, which is smaller,
+# truer to what the author wrote, and reproducible.
+#
+#   Sweep    strategy: matrix over two axes. The body is one subtask; the
+#            diagram must show one node in one region, not six nodes.
+#   Family   a `select:` family -- a CHOICE rather than a fan-out. "one of"
+#            and "for each" are different statements and must not render alike.
+#   Plain    an ordinary compound, so a region is not drawn around everything.
+package:
+  name: matrix
+  desc: Parameterized bodies
+
+  imports:
+  - std
+
+  tasks:
+  - name: Sweep
+    scope: root
+    desc: Run the body for each combination
+    strategy:
+      matrix:
+        sim: [vlt, vcs, xcelium]
+        opt: ["-O0", "-O2"]
+    body:
+    - name: run
+      uses: std.Message
+      with:
+        msg: "${{ matrix.sim }} ${{ matrix.opt }}"
+
+  - name: Plain
+    scope: root
+    desc: No strategy at all
+    body:
+    - name: only
+      uses: std.Message
+      with: {msg: only}

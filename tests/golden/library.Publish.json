@@ -20,7 +20,8 @@
   "produces": [
     {
       "type": "library.Image",
-      "attrs": {}
+      "attrs": {},
+      "doc": ""
     }
   ],
   "passthrough": "PassthroughE.Unused",

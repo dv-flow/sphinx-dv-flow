@@ -37,13 +37,14 @@ nitpicky = True
 
 # `std` is a different distribution, and this doc set does not document it --
 # so a fixture type extending `std.Check` produces a reference with nowhere to
-# land. That is a real situation for any project building on a library, and the
-# real answer is intersphinx (M5), which resolves such names against the other
-# project's inventory. Until then it is silenced narrowly, by package prefix:
-# a dangling reference to anything in *this* project still fails the build.
-nitpick_ignore_regex = [
-    (r'dvf:.*', r'std\..*'),
-]
+# land. That is a real situation for any project building on a library.
+#
+# Said as a package name rather than as a `nitpick_ignore` regex, which is the
+# difference between "another project documents this" and "stop telling me
+# about anything matching `dvf:.*`". It is also checkable: point
+# `intersphinx_mapping` at dv-flow-mgr's published docs and these same
+# references become links, with no change here.
+dvflow_intersphinx_packages = ["std"]
 
 html_theme = "furo"
 html_static_path = ["_static"]

@@ -1,0 +1,11 @@
+# Pulled in only by the `ci` configuration. Its tasks are therefore NOT part of
+# the package as loaded by default, which is why the config page names the
+# fragment rather than listing what the fragment happens to contain.
+fragment:
+  tasks:
+  - name: Publish
+    scope: export
+    desc: Publish build artifacts
+    uses: std.Message
+    with:
+      msg: "publish"

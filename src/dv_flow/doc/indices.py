@@ -34,10 +34,14 @@ class ReverseIndex:
     implementations: Dict[str, List[str]] = dc.field(default_factory=dict)
     # Tag type name -> tasks carrying it.
     tagged_with: Dict[str, List[str]] = dc.field(default_factory=dict)
-    # Type name -> the attribute-qualified requirements seen for it, as text.
-    # `{type: ObjFile}` and `{type: ObjFile, arch: arm}` are different
-    # requirements, and an index keyed on the type name alone merges them.
-    consumed_as: Dict[str, List[str]] = dc.field(default_factory=dict)
+    # Type name -> {consuming task -> the qualifier it asked for}.
+    #
+    # Keyed by CONSUMER, not just by type. `{type: ObjFile}` and
+    # `{type: ObjFile, arch: arm}` are different requirements, and one consumer
+    # asking for the qualified form does not make its neighbours picky --
+    # labelling every edge into a type with the same qualifier states a
+    # constraint the other consumers never declared.
+    consumed_as: Dict[str, Dict[str, str]] = dc.field(default_factory=dict)
 
     def to_dict(self):
         return {f.name: getattr(self, f.name) for f in dc.fields(self)}
@@ -82,7 +86,11 @@ def build_index(pkg) -> ReverseIndex:
                 type_name = _entry_type(entry)
                 _add(index.consumed_by, type_name, name)
                 if isinstance(entry, dict) and len(entry) > 1:
-                    _add(index.consumed_as, type_name, _entry_text(entry))
+                    qualifier = ", ".join(
+                        "%s=%s" % (k, v) for k, v in entry.items()
+                        if k != 'type')
+                    index.consumed_as.setdefault(
+                        type_name, {})[name] = qualifier
 
         base = getattr(task, 'uses', None)
         base_name = getattr(base, 'name', None) if base is not None else None

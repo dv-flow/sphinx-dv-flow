@@ -70,7 +70,8 @@ def loaded(data_dir):
     from dv_flow.doc.loader import load_project
 
     out = {}
-    for name in ("simple", "library", "inherit"):
+    for name in ("simple", "library", "inherit", "types", "abstract",
+                 "lifecycle"):
         result = load_project(os.path.join(data_dir, name))
         assert result.ok, "fixture %s failed to load: %s" % (
             name, [m.msg for m in result.markers])

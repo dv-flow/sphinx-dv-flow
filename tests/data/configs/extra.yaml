@@ -1,0 +1,8 @@
+# A fragment with a filter of its own: filter extraction has to look past the
+# package file, or a package that organizes its filters into a fragment
+# documents none of them.
+fragment:
+  filters:
+  - export: basenames_of
+    desc: Extract the base name of every input path
+    expr: "input | map(input.path)"

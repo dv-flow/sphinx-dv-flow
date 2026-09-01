@@ -53,3 +53,12 @@ for anyone who wants that.
 
 Either way the reference degrades to literal text, so the name stays on the page
 even without a link to follow.
+
+When the warning happens
+========================
+
+The warning is emitted after every resolver has declined — including
+intersphinx. That ordering matters: a reference to another project's flow
+package is a link, not a defect, and warning earlier would report every
+legitimate cross-project reference as a broken one. See
+:doc:`cross_project`.

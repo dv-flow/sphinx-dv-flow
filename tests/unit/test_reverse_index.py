@@ -57,10 +57,14 @@ def test_consumers_are_recorded(index):
 
 def test_an_attribute_qualified_requirement_is_kept_distinct(index):
     """`{type: ObjFile}` and `{type: ObjFile, arch: arm}` are different
-    requirements. An index keyed on the type name alone merges them, and the
-    reader loses the fact that one consumer is pickier than the other."""
-    assert index.consumed_as['types.ObjFile'] == [
-        'type=types.ObjFile, arch=arm']
+    requirements, and the index has to say WHICH consumer asked for which.
+
+    Recording the qualifier against the type alone would let a renderer label
+    every edge into `ObjFile` with `arch=arm` -- stating a constraint `Link`
+    never declared.
+    """
+    assert index.consumed_as['types.ObjFile'] == {'types.Package': 'arch=arm'}
+    assert 'types.Link' not in index.consumed_as['types.ObjFile']
 
 
 def test_a_dead_end_output_has_no_consumers(index):

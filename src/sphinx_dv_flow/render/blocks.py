@@ -10,6 +10,7 @@ import os
 from docutils import nodes
 
 from . import lifecycle as lifecycle_render
+from . import schema
 from .docfield import parse_doc
 
 # Rendered when a task inherits the engine's `consumes` default. It reads as
@@ -26,18 +27,35 @@ def _admonition(title, body_nodes, classes):
     return node
 
 
-def section_title(text, level_nodes=None):
+def section_title(text, key=None, state=None):
+    """A block heading, linked to its schema entry when the block is a key.
+
+    "Parameters" is the `with:` key wearing a friendlier name, and the reader
+    who wants to know what may go in one is the reader looking at the table.
+    """
     para = nodes.paragraph(classes=['dvf-block-title'])
-    para += nodes.strong(text=text)
+    label = schema.label(text, key, state) if key else text
+    if isinstance(label, str):
+        para += nodes.strong(text=label)
+    else:
+        strong = nodes.strong()
+        strong += label
+        para += strong
     return para
 
 
 def badges(doc):
-    """Scope and lifecycle badges for the header line."""
-    out = ["[%s]" % scope for scope in doc.scope]
+    """Scope and lifecycle badges for the header line.
+
+    Read defensively: the header is shared by every documented object, and
+    configurations have no visibility and carry no tags. A block that only
+    works for tasks would be a second header renderer in everything but name.
+    """
+    out = ["[%s]" % scope for scope in (getattr(doc, 'scope', None) or [])]
     if getattr(doc, 'kind', None) == 'abstract':
         out.append("[abstract]")
-    label = lifecycle_render.badge_text(doc)
+    label = (lifecycle_render.badge_text(doc)
+             if getattr(doc, 'tags', None) else None)
     if label:
         out.append("[%s]" % label)
     return out
@@ -93,11 +111,21 @@ def signature(doc):
 
 
 def _field_list(rows):
-    """`rows` is [(label, [nodes])]. Empty rows are skipped by the caller."""
+    """`rows` is [(label, [nodes])]. Empty rows are skipped by the caller.
+
+    A label may be a string or a list of nodes -- the latter is how a schema
+    cross-link gets into a field name without every caller having to know
+    whether one is configured.
+    """
     field_list = nodes.field_list()
     for label, body in rows:
         field = nodes.field()
-        field += nodes.field_name(text=label)
+        if isinstance(label, str):
+            field += nodes.field_name(text=label)
+        else:
+            name = nodes.field_name()
+            name += label
+            field += name
         field_body = nodes.field_body()
         field_body += body
         field += field_body
@@ -105,7 +133,7 @@ def _field_list(rows):
     return field_list
 
 
-def dataflow(doc):
+def dataflow(doc, state=None):
     """`consumes` / `produces` / `passthrough` -- the type signature of a task.
 
     The distinguishing content of a library page. Three things this has to get
@@ -139,7 +167,7 @@ def dataflow(doc):
                 consumes_body += nodes.Text("none — this task takes no inputs")
             else:
                 consumes_body += nodes.Text(text.split('.')[-1].lower())
-    rows.append(("Consumes", consumes_body))
+    rows.append((schema.label("Consumes", "consumes", state), consumes_body))
 
     if doc.produces:
         bullet = nodes.bullet_list()
@@ -150,9 +178,19 @@ def dataflow(doc):
             if entry.attrs:
                 para += nodes.Text(" ")
                 para += nodes.literal(text=_attrs_text(entry.attrs))
+            if entry.doc:
+                # The type says what KIND of thing this is; the prose says
+                # which thing. Rendered as literal text because it is usually a
+                # path, and shown verbatim because the unresolved
+                # `${{ task_rundir }}` is the part that generalises -- a
+                # resolved path would only be true on the machine that built
+                # the docs.
+                para += nodes.Text(" — ")
+                para += nodes.literal(text=entry.doc)
             item += para
             bullet += item
-        rows.append(("Produces (may produce)", bullet))
+        rows.append((schema.label("Produces (may produce)", "produces", state),
+                     bullet))
 
     if rows:
         return [_field_list(rows)]
@@ -186,7 +224,7 @@ def _type_xref(name):
     return ref
 
 
-def needs(doc):
+def needs(doc, state=None):
     if not doc.needs:
         return []
     bullet = nodes.bullet_list()
@@ -196,7 +234,7 @@ def needs(doc):
         para += _task_xref(name)
         item += para
         bullet += item
-    return [_field_list([("Needs", bullet)])]
+    return [_field_list([(schema.label("Needs", "needs", state), bullet)])]
 
 
 def _task_xref(name):
@@ -209,7 +247,7 @@ def _task_xref(name):
     return ref
 
 
-def facts(doc):
+def facts(doc, state=None):
     """The collapsed behavior table.
 
     Only what was actually set: a table of engine defaults tells the reader
@@ -221,7 +259,9 @@ def facts(doc):
     for key in sorted(doc.behavior):
         body = nodes.paragraph()
         body += nodes.literal(text=str(doc.behavior[key]))
-        rows.append((key, body))
+        # The facts table is the one place the raw key names already appear, so
+        # it is where a schema link is most obviously right.
+        rows.append((schema.label(key, key, state), body))
     return [_field_list(rows)]
 
 
@@ -230,18 +270,35 @@ def examples(doc, state, srcfile=None):
 
     A literal block, not a bullet list: example code is meant to be copied, and
     bullets are not part of what the reader should type.
+
+    Three things beyond the code, all of them about what the reader may assume:
+    an adjacent file is included rather than shown as a path; a generated
+    snippet says it was synthesized rather than asserted; and a flow fragment
+    the engine refused says so *next to the code*, where someone about to copy
+    it will see it.
     """
+    from . import examples as render_examples
+
     out = []
     for i, ex in enumerate(doc.examples):
+        if ex.origin == 'file':
+            out += render_examples.include_file(ex, state)
+            continue
+
         title = ex.title or "Example %d" % (i + 1)
         para = nodes.paragraph()
         para += nodes.strong(text=title)
+        if ex.origin == 'generated':
+            para += nodes.Text(" ")
+            para += nodes.emphasis(text="(generated)")
         out.append(para)
         if ex.caption:
             out.extend(parse_doc(ex.caption, state, source=srcfile))
         block = nodes.literal_block(ex.code, ex.code)
         block['language'] = ex.lang or 'text'
         out.append(block)
+        out += render_examples.validity(ex)
+        out += render_examples.diagram(ex)
     return out
 
 
@@ -259,6 +316,10 @@ def source(doc, base_dir=None):
             path = os.path.relpath(path, base_dir)
         except ValueError:
             pass
+    # Line 0 means "somewhere in this file" -- it is what a declaration with no
+    # recorded position yields. Printing `file:0` looks like a location and
+    # sends a reader to the top of the file believing that is where to look.
+    where = ("%s:%d" % (path, doc.srcinfo.line)) if doc.srcinfo.line else path
     para = nodes.paragraph(classes=['dvf-source'])
-    para += nodes.emphasis(text="Defined in %s:%d" % (path, doc.srcinfo.line))
+    para += nodes.emphasis(text="Defined in %s" % where)
     return [para]

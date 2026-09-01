@@ -1,0 +1,126 @@
+# Fixture: configurations and filters -- the §4.7 package-level objects.
+#
+# A configuration is a named, pre-selected way to load the package. What a
+# reader needs from one is not its implementation but: what does it change, and
+# what do I type to get it. The configs here pin exactly that:
+#
+#   debug     overrides one task -- the simplest shape that changes anything
+#   fast      `uses: debug`, so the page has to distinguish what it inherits
+#             from what it adds
+#   ci        pulls in a fragment and overrides a type, so "what does it
+#             change" is not a task list either
+#
+# Note what is NOT here: a config-level `with:`. Neither the map form nor the
+# list form does anything upstream (PLAN.md U15), so a page that showed
+# "parameters this configuration fixes" would be describing a mechanism that
+# does not run. Configs document what they actually change.
+#
+# Filters are declared because their DEFINITIONS are documentable even though
+# the engine does not yet resolve them (PLAN.md U14) -- `by_arch` is export,
+# `internal_helper` is local and must never appear in documentation.
+package:
+  name: configs
+  desc: Configurations and filters
+  doc: |
+    Fixture package for the configuration and filter documentation kinds.
+
+  imports:
+  - std
+
+  fragments:
+  - extra.yaml
+
+  with:
+    opt_level:
+      type: str
+      value: "0"
+      doc: Optimization level passed to the compiler.
+    trace:
+      type: str
+      value: "false"
+      doc: Whether to record a waveform.
+
+  types:
+  - name: ObjFile
+    doc: |
+      A compiled object. Exists so a config has a type to override and a filter
+      has something to select over.
+    with:
+      arch:
+        type: str
+        value: ""
+        doc: Target architecture the object was compiled for.
+
+  filters:
+  - export: by_arch
+    desc: Select inputs matching a target architecture
+    doc: |
+      Keeps only those inputs whose ``arch`` attribute matches. Written for
+      ``configs.ObjFile``, but nothing restricts it to that type.
+    with:
+      arch:
+        type: str
+        desc: Architecture to match, e.g. ``arm`` or ``riscv``.
+    expr: "input[] | select(input.arch == $arg0)"
+
+  - name: paths_of
+    desc: Extract the `path` attribute of every input
+    expr: "input | map(input.path)"
+
+  - local: internal_helper
+    desc: Not documented -- local filters are fragment-scoped
+    expr: "input"
+
+  configs:
+  - name: debug
+    desc: Build with debug output
+    doc: |
+      Replaces the build step with one that says what it is doing. Select it
+      with ``dfm run -c debug``.
+    tasks:
+    - override: Build
+      uses: std.Message
+      with:
+        msg: "debug build"
+
+  - name: fast
+    desc: Debug, but with a terser report
+    uses: debug
+    tasks:
+    - override: Report
+      uses: std.Message
+      with:
+        msg: "fast report"
+
+  - name: ci
+    desc: The configuration the continuous-integration job selects
+    fragments:
+    - ci.yaml
+    types:
+    - name: ObjFile
+      doc: |
+        The CI build tags objects with the build number.
+      with:
+        arch:
+          type: str
+          value: ""
+        build_id:
+          type: str
+          value: ""
+
+  tasks:
+  - name: Build
+    scope: root
+    desc: Build the design
+    doc: |
+      Builds at `opt_level`, recording a waveform when `trace` is set.
+    uses: std.Message
+    with:
+      msg: "build opt=${{ opt_level }}"
+
+  - name: Report
+    scope: root
+    desc: Summarize the build
+    uses: std.Message
+    with:
+      msg: "report"

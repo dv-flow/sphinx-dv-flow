@@ -48,6 +48,67 @@ class _DvfAutoBase(SphinxDirective):
             note_dependencies(self.env, result)
         return root, result
 
+    def _diagram_for(self, task, doc):
+        """The sub-flow diagram for a compound task, or None.
+
+        Built for compound tasks by default because a compound's body IS its
+        content -- a page describing one without showing its shape has left out
+        the part the reader came for. `:no-diagram:` turns it off; `:diagram:`
+        asks for one on a task that would not get it automatically.
+        """
+        if 'no-diagram' in self.options:
+            return None
+        if doc.kind != 'compound' and 'diagram' not in self.options:
+            return None
+
+        from dv_flow.doc.diagram import flow
+        model = flow.build(
+            task,
+            depth=self.env.config.dvflow_diagram_depth,
+            max_nodes=self.env.config.dvflow_diagram_max_nodes,
+            dataflow=self.env.config.dvflow_diagram_dataflow)
+        return None if model.is_empty() else model
+
+    def _lattice_for(self, task, doc):
+        """The variant lattice for a `select:` family, or None."""
+        if doc.kind != 'variants':
+            return None
+        from dv_flow.doc.diagram import lattice
+        return lattice.build(task)
+
+    def _prepare_examples(self, doc):
+        """Fill in adjacent-file and generated examples, and validate them.
+
+        Done here rather than in extraction: which sources are consulted is a
+        documentation-set decision, and the examples directory is a path in the
+        Sphinx tree that `dv_flow.doc` has no business knowing about.
+        """
+        from sphinx.util import logging
+
+        from ..render import examples as render_examples
+
+        render_examples.prepare(doc, self.env)
+        render_examples.report(doc, logging.getLogger(__name__),
+                               location=self.get_location())
+        return doc
+
+    def _elsewhere(self, name):
+        """Refuse to document what another project documents (design §12.3).
+
+        Two doc sets describing the same object is worse than one: references
+        resolve to whichever inventory answers first, and the two copies drift
+        independently. The name still *links* -- that is what intersphinx is
+        for -- so declining to render it costs the reader nothing.
+        """
+        from ..config import documented_elsewhere
+
+        if not documented_elsewhere(self.env.config, name):
+            return None
+        return [self._error(
+            "'%s' belongs to a package listed in dvflow_intersphinx_packages, "
+            "which declares that another project documents it. Remove it from "
+            "that list to document it here." % name)]
+
     def _show_source(self):
         return ('no-source' not in self.options
                 and self.env.config.dvflow_show_source)
@@ -65,6 +126,24 @@ class _DvfAutoBase(SphinxDirective):
         node = nodes.error()
         node += nodes.paragraph(text=message)
         return node
+
+    def _note_cells(self, task, doc, anchor):
+        """Register a family's cell names, all pointing at the family page.
+
+        A cell is what a reader actually types (`dfm run sim-img.vlt`), so a
+        reference to one has to resolve. It does not get a page of its own --
+        folding cells into the family is the whole point of the variant kind --
+        so every cell resolves to the family's anchor.
+
+        Without this, the names on the lattice are the only place cells appear
+        and nothing else in the doc set can link to one.
+        """
+        if doc.kind != 'variants':
+            return
+        from dv_flow.doc.diagram.lattice import cell_names
+        domain = self.env.get_domain('dvf')
+        for cell in cell_names(task):
+            domain.note_object('task', cell, self.env.docname, anchor)
 
     def _section(self, objtype, name, body, noindex=False):
         section = nodes.section()
@@ -92,6 +171,12 @@ class _DvfAutoBase(SphinxDirective):
         section += body
         return section
 
+    def _section_for_task(self, task, doc, body, noindex=False):
+        section = self._section('task', doc.name, body, noindex=noindex)
+        if not noindex:
+            self._note_cells(task, doc, anchor_for('task', doc.name))
+        return section
+
 
 class DvfAutoTask(_DvfAutoBase):
     """Document one task, extracted from the flow project."""
@@ -105,10 +190,16 @@ class DvfAutoTask(_DvfAutoBase):
         'config': directives.unchanged,
         'no-source': directives.flag,
         'noindex': directives.flag,
+        'diagram': directives.flag,
+        'no-diagram': directives.flag,
     }
 
     def run(self):
         name = self.arguments[0].strip()
+        elsewhere = self._elsewhere(name)
+        if elsewhere is not None:
+            return elsewhere
+
         root, result = self._load()
         if not result.ok:
             # The markers were already reported against the flow file by
@@ -125,12 +216,16 @@ class DvfAutoTask(_DvfAutoBase):
             return [self._error(
                 "no task named '%s' in flow project at %s" % (name, root))]
 
-        doc = extract_task(task, result.pkg, result.loader,
-                           index=build_index(result.pkg))
+        index = build_index(result.pkg)
+        self.env.get_domain('dvf').note_reverse(self.env.docname, index)
+        doc = extract_task(task, result.pkg, result.loader, index=index)
+        self._prepare_examples(doc)
         body = kinds.render(doc, self.state, base_dir=root,
-                            show_source=self._show_source())
-        return [self._section('task', doc.name, body,
-                              noindex='noindex' in self.options)]
+                            show_source=self._show_source(),
+                            diagram=self._diagram_for(task, doc),
+                            lattice=self._lattice_for(task, doc))
+        return [self._section_for_task(
+            task, doc, body, noindex='noindex' in self.options)]
 
 
 class DvfAutoType(_DvfAutoBase):
@@ -145,6 +240,8 @@ class DvfAutoType(_DvfAutoBase):
         'config': directives.unchanged,
         'no-source': directives.flag,
         'noindex': directives.flag,
+        'diagram': directives.flag,
+        'no-diagram': directives.flag,
     }
 
     def run(self):
@@ -180,6 +277,17 @@ def _find_type(pkg, name):
     return matches[0] if len(matches) == 1 else None
 
 
+def _package_map_nodes(result, internal):
+    from dv_flow.doc.diagram import dataflow
+    from dv_flow.doc.indices import build_index
+    from dv_flow.doc.package import documented_tasks
+
+    index = build_index(result.pkg)
+    return dataflow.build_for_package(
+        result.pkg, index,
+        documented=documented_tasks(result.pkg, internal=internal))
+
+
 class DvfAutoPackage(_DvfAutoBase):
     """Document what a package publishes.
 
@@ -203,7 +311,12 @@ class DvfAutoPackage(_DvfAutoBase):
         'exclude': _list_option,
         'group-by': directives.unchanged,
         'types': _bool_option,
+        'configs': _bool_option,
+        'filters': _bool_option,
         'no-source': directives.flag,
+        'diagram': directives.flag,
+        'no-diagram': directives.flag,
+        'map': _bool_option,
     }
 
     def run(self):
@@ -220,6 +333,10 @@ class DvfAutoPackage(_DvfAutoBase):
         from dv_flow.doc.task import extract_task
         from dv_flow.doc.type import extract_type
 
+        elsewhere = self._elsewhere(getattr(result.pkg, 'name', ''))
+        if elsewhere is not None:
+            return elsewhere
+
         internal = self.options.get(
             'internal', self.env.config.dvflow_internal)
         # Deprecated tasks are excluded from a listing by default because a
@@ -230,6 +347,9 @@ class DvfAutoPackage(_DvfAutoBase):
         include_deprecated = self.options.get('deprecated', False)
         show_source = self._show_source()
         index = build_index(result.pkg)
+        # Recorded so the indices can answer "what produces this type" over
+        # every package any document covered.
+        self.env.get_domain('dvf').note_reverse(self.env.docname, index)
 
         tasks = documented_tasks(
             result.pkg,
@@ -240,6 +360,15 @@ class DvfAutoPackage(_DvfAutoBase):
             include_deprecated=include_deprecated)
 
         out = []
+
+        # A package with no runnable tasks is a library, and the question its
+        # landing page has to answer first is "what can I plug into what" --
+        # not "here is a list of tasks". Where there ARE entry points, they
+        # come first: someone who can run something wants to know that before
+        # they read a type map.
+        if self.options.get('map', not any(
+                getattr(t, 'is_root', False) for t in tasks)):
+            out += self._package_map(result, root, internal)
 
         group_by = self.options.get('group-by', 'kind')
         if group_by == 'none':
@@ -259,9 +388,12 @@ class DvfAutoPackage(_DvfAutoBase):
 
             for task in group:
                 doc = extract_task(task, result.pkg, result.loader, index=index)
+                self._prepare_examples(doc)
                 body = kinds.render(doc, self.state, base_dir=root,
-                                    show_source=show_source)
-                out.append(self._section('task', doc.name, body))
+                                    show_source=show_source,
+                                    diagram=self._diagram_for(task, doc),
+                                    lattice=self._lattice_for(task, doc))
+                out.append(self._section_for_task(task, doc, body))
 
         if self.options.get('types', False):
             for tt in documented_types(result.pkg):
@@ -270,4 +402,70 @@ class DvfAutoPackage(_DvfAutoBase):
                                            show_source=show_source)
                 out.append(self._section('type', doc.name, body))
 
+        # Filters and configurations follow the tasks, in the §4.7 order, and
+        # they appear by DEFAULT where types do not. A type has somewhere else
+        # to live -- its own page, the type index, a cross-reference from every
+        # `produces:` entry that names it. A configuration has none of those: if
+        # the package page does not mention it, a reader has no way to discover
+        # that `-c ci` is a thing they may type.
+        out += self._filters(result, root, internal, show_source)
+        out += self._configs(result, root, show_source)
+
         return out
+
+    def _configs(self, result, root, show_source):
+        from dv_flow.doc.config import documented_configs, extract_config
+
+        from ..render import configs as render_configs
+        from .package_objects import _qualified
+
+        if not self.options.get('configs', True):
+            return []
+        selected = documented_configs(result.pkg)
+        if not selected:
+            return []
+
+        out = [self._group_heading("Configurations")]
+        for cfg in selected:
+            doc = extract_config(cfg, result.pkg)
+            body = render_configs.render(doc, self.state, base_dir=root,
+                                         show_source=show_source)
+            out.append(self._section('config', _qualified(doc), body))
+        return out
+
+    def _filters(self, result, root, internal, show_source):
+        from dv_flow.doc.filter import documented_filters, extract_filter
+
+        from ..render import filters as render_filters
+        from .package_objects import _qualified
+
+        if not self.options.get('filters', True):
+            return []
+        selected = documented_filters(result.pkg, internal=internal)
+        if not selected:
+            return []
+
+        out = [self._group_heading("Filters")]
+        for fd in selected:
+            doc = extract_filter(fd, result.pkg)
+            body = render_filters.render(doc, self.state, base_dir=root,
+                                         show_source=show_source)
+            out.append(self._section('filter', _qualified(doc), body))
+        return out
+
+    def _group_heading(self, text):
+        heading = nodes.paragraph(classes=['dvf-group-title'])
+        heading += nodes.strong(text=text)
+        return heading
+
+    def _package_map(self, result, root, internal):
+        """The package-wide dataflow map, as a landing-page opener."""
+        from ..render import diagrams as render_diagrams
+
+        model = _package_map_nodes(result, internal)
+        if model.is_empty():
+            return []
+
+        heading = nodes.paragraph(classes=['dvf-block-title'])
+        heading += nodes.strong(text="What connects to what")
+        return [heading] + render_diagrams.render_model(model)

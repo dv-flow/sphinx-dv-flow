@@ -7,6 +7,7 @@ be in the model.
 
 from docutils import nodes
 
+from . import tables
 from .docfield import first_paragraph
 
 
@@ -55,41 +56,9 @@ def _provenance_nodes(param, task_name):
     return out
 
 
-def _cell(children):
-    entry = nodes.entry()
-    para = nodes.paragraph()
-    if isinstance(children, (list, tuple)):
-        for child in children:
-            para += child
-    else:
-        para += children
-    entry += para
-    return entry
-
-
 def _table(headers, rows, classes=None):
-    table = nodes.table(classes=classes or [])
-    group = nodes.tgroup(cols=len(headers))
-    table += group
-    for _ in headers:
-        group += nodes.colspec(colwidth=1)
-
-    head = nodes.thead()
-    head_row = nodes.row()
-    for text in headers:
-        head_row += _cell(nodes.Text(text))
-    head += head_row
-    group += head
-
-    body = nodes.tbody()
-    for row in rows:
-        body_row = nodes.row()
-        for cell in row:
-            body_row += _cell(cell)
-        body += body_row
-    group += body
-
-    return table
+    """Shared builder -- see `render/tables.py` for why widths are computed."""
+    return tables.build(headers, rows, classes=classes)
 
 
 def param_table(doc, show_provenance=True):
