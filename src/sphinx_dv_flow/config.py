@@ -20,6 +20,13 @@ def setup_config(app):
     app.add_config_value('dvflow_config', None, 'env')
     app.add_config_value('dvflow_internal', False, 'env')
     app.add_config_value('dvflow_show_source', True, 'env')
+    # How `doc:` prose is interpreted (design §8). `doc:` is not read only by
+    # Sphinx -- the same string reaches `dfm show`, `dfm llms` and editor
+    # hovers, none of which render reStructuredText -- so flow-file prose is
+    # very often Markdown. 'rst' is the default because it is what a project
+    # documenting itself with Sphinx will write; 'markdown' and 'plain' are
+    # there because that is not every project.
+    app.add_config_value('dvflow_doc_format', 'rst', 'env')
     app.add_config_value('dvflow_diagram_depth', 1, 'env')
     app.add_config_value('dvflow_diagram_max_nodes', 40, 'env')
     app.add_config_value('dvflow_diagram_dataflow', True, 'env')

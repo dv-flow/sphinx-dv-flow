@@ -59,6 +59,30 @@ address one whatever the documentation says.
 
 Show the ``Defined in flow.yaml:NN`` line at the end of each object.
 
+``dvflow_doc_format``
+---------------------
+
+:Type: ``str``
+:Default: ``'rst'``
+
+How ``doc:`` prose is interpreted: ``'rst'``, ``'markdown'`` or ``'plain'``.
+
+``doc:`` is not read only by Sphinx. The same string reaches ``dfm show``,
+``dfm llms``, and editor hovers — none of which render reStructuredText — so
+flow-file prose is very often written in Markdown. ``'rst'`` is the default
+because it is what a project documenting itself with Sphinx will write.
+
+``'markdown'`` uses ``myst_parser`` when it is installed. Without it, a
+deliberately small conversion handles the two constructs that make otherwise
+valid prose fail to parse as reStructuredText — fenced code blocks and
+single-backtick code spans. Everything else (``**bold**``, ``*emphasis*``,
+bullet lists, block quotes) already means the same thing in both, which is what
+makes a conversion that small worth having.
+
+Whatever the format, **prose that fails to parse falls back to ``'plain'``**
+rather than emitting docutils system messages onto the page. A sentence someone
+wrote is worth showing even when its markup is wrong.
+
 Diagrams
 ========
 

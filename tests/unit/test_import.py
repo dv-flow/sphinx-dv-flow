@@ -91,7 +91,8 @@ def test_setup_registers_the_config_values():
                      "dvflow_coverage", "dvflow_coverage_warn",
                      "dvflow_examples_dir", "dvflow_examples_generate",
                      "dvflow_examples_validate", "dvflow_examples_diagrams",
-                     "dvflow_intersphinx_packages", "dvflow_schema_url"}
+                     "dvflow_intersphinx_packages", "dvflow_schema_url",
+                     "dvflow_doc_format"}
 
     # Every setting that changes WHAT gets extracted must invalidate the
     # environment. A setting that rebuilds on 'html' instead would leave a
