@@ -83,7 +83,29 @@ jobs:
         run: pip install ivpm
 
       - name: Assemble the dev environment
+        # Deliberately the same bare command docs/install.rst tells contributors
+        # to run, rather than an explicit `-d dev`. The dep-set is selected by
+        # `default-dep-set:` in ivpm.yaml; pinning it here instead would leave
+        # the documented command broken and CI unable to notice.
         run: ivpm update -a
+
+      - name: The dev environment must actually exist
+        # `ivpm update -a` EXITS 0 WHEN IT INSTALLS NOTHING. With no dep-set
+        # selected it falls back to the first one in ivpm.yaml, which is the
+        # empty `use` set -- so a misconfiguration produced "Total packages: 0",
+        # success, and no virtualenv, and the failure only appeared two steps
+        # later as `./packages/python/bin/pytest: No such file or directory`
+        # (exit 127). That reads like a broken test command rather than an
+        # environment that was never built.
+        run: |
+          for bin in python pytest sphinx-build; do
+            if [ ! -x "packages/python/bin/$bin" ]; then
+              echo "::error::packages/python/bin/$bin is missing; 'ivpm update -a' installed nothing."
+              echo "::error::Check that ivpm.yaml still names a non-empty default-dep-set."
+              exit 1
+            fi
+          done
+          ./packages/python/bin/python -c "import dv_flow.mgr, sphinx; print('dv-flow-mgr and sphinx are importable')"
 
       - name: Run tests
         # No install step: ivpm's venv has no pip, and tests/conftest.py puts

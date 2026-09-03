@@ -42,9 +42,14 @@ jobs:
         # hypothetical one: any file that records the clone URL leaks it. If a
         # build ever needs such a name it belongs in a repository secret, which
         # is masked in logs.
+        #
+        # The pathspec excludes the whole .forgejo/workflows directory, not just
+        # this file. Excluding only itself is what made four edapack repos red
+        # for a day: with two workflows present, each matched the OTHER's copy
+        # of this very pattern. This repo now has two (ci.yml and docs.yml).
         run: |
           pattern='perch-char\.ts\.net|\.ts\.net|a9550|100\.(6[4-9]|[7-9][0-9]|1[01][0-9]|12[0-7])\.[0-9]+\.[0-9]+'
-          if git grep -nIE "$pattern" -- . ':!.forgejo/workflows/ci.yml' ; then
+          if git grep -nIE "$pattern" -- . ':!.forgejo/workflows/' ; then
             echo "::error::internal identifier found in a tracked file (see matches above)"
             exit 1
           fi

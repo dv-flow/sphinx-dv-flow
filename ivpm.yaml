@@ -1,7 +1,25 @@
 package:
   name: sphinx-dv-flow
 
+  # WITHOUT THIS LINE, `ivpm update -a` INSTALLS NOTHING AND SUCCEEDS.
+  #
+  # With no `-d` and no `default-dep-set`, ivpm falls back to the FIRST dep-set
+  # in this file (ivpm/project_ops.py, `_getDepSet`) -- which was `use`, and
+  # `use` is deliberately empty. The result was "Total packages: 0", a zero exit
+  # status, no `packages/python` virtualenv, and the next step failing with
+  # `./packages/python/bin/pytest: No such file or directory` (exit 127).
+  #
+  # It never showed up locally because a populated `packages/` already existed
+  # from an explicit `-d dev`; only a clean checkout runs the default path.
+  # `ivpm update -a` is also what docs/install.rst tells contributors to run, so
+  # naming the default here fixes the documented command rather than just CI.
+  default-dep-set: dev
+
   dep-sets:
+  # Deliberately empty: this package's runtime requirements are declared in
+  # pyproject.toml, and duplicating them here would be a second copy to drift.
+  # It stays first in the file, so `default-dep-set` above is what keeps it from
+  # being chosen by accident.
   - name: use
     deps: []
 
