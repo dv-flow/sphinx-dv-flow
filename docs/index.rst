@@ -24,9 +24,12 @@ The project has two halves, and the split matters:
 
 .. note::
 
-   Early development. The packaging, the extension entry point and the
-   extraction/rendering split are in place; the directives that use them are
-   arriving milestone by milestone. See ``PLAN.md`` in the repository root.
+   Early development. The extraction and rendering layers, the ``dvf`` domain,
+   diagrams, examples, coverage reporting and cross-project references are in
+   place, and ``dv-flow-mgr`` generates its own standard-library reference with
+   this extension. The directive and configuration surface is not frozen --
+   hence ``0.0.x``. See ``PLAN.md`` in the repository root for what is still
+   outstanding.
 
 .. toctree::
    :maxdepth: 2

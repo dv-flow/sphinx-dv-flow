@@ -2,6 +2,18 @@
 Installation
 ############
 
+From PyPI
+=========
+
+.. code-block:: shell
+
+    pip install sphinx-dv-flow
+
+That pulls in ``dv-flow-mgr`` and ``sphinx``. The extension reads a flow project
+through the engine's own loader rather than parsing YAML itself, which is why
+the engine is a hard dependency and not an optional one -- see
+:doc:`reference/extraction`.
+
 From source
 ===========
 
@@ -15,6 +27,14 @@ Extras
 ``[graphviz]``
     Graphviz rendering backend for diagrams. Without it, diagrams render as
     Mermaid, which needs no external tool.
+
+``[markdown]``
+    ``myst-parser``, which makes ``dvflow_doc_format = "markdown"`` handle
+    general Markdown. Without it, ``doc:`` prose written in Markdown still
+    renders -- a deliberately small conversion covers fenced code blocks and
+    single-backtick code spans, the two constructs that make otherwise-fine
+    prose fail to parse as reStructuredText. So this is an upgrade, not a
+    requirement.
 
 ``[test]``
     ``pytest``, for running the test suite.

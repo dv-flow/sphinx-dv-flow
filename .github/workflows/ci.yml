@@ -1,27 +1,79 @@
+# sphinx-dv-flow -- CI and release.
+#
+# WHY THIS REPO DOES NOT CALL dv-flow/dv-flow-release's dv-flow-pybuild.yml,
+# which eleven sibling repos (dv-flow-mgr among them) do call.
+#
+# That workflow stamps the build version with a hardcoded pair of `sed`s:
+#
+#     sed -i -e 's%SUFFIX=".*"%...%' -e 's%VERSION=".*"%...%' <version_dir>/__init__.py
+#     sed -i -e 's%version.*=.*".*"%version = "${version}${suffix}"%g'  pyproject.toml
+#
+# It writes the version in TWO places, and `sed` does not fail when its pattern
+# matches nothing -- so a moved file or a renamed constant produces a green
+# build that stamped one of them and not the other, surfacing much later as a
+# package whose `pip show` version and `import` version disagree. dv-flow-mgr's
+# .forgejo/workflows/ci.yml exists largely to detect that, and its comment
+# records four repos in the org already in that state.
+#
+# This repo keeps the version in exactly one place -- src/dv_flow/doc/__version__.py --
+# and pyproject.toml reads it through `[tool.setuptools.dynamic]`. There is no
+# second copy to drift, so the release job below only ever rewrites SUFFIX. That
+# is incompatible with the shared workflow's `__init__.py` assumption, hence the
+# local job.
+#
+# EVERYTHING ELSE ABOUT THE RELEASE SEMANTICS IS COPIED FROM THE SHARED WORKFLOW
+# ON PURPOSE, because those semantics encode incidents rather than preferences:
+#
+#   * publish requires BOTH a refs/tags/v* ref AND the release-authority switch
+#     at https://dvkit.org/.well-known/release-authority.json naming this forge.
+#     A push to a branch must never publish: dv-flow is in a 5-minute
+#     bidirectional Forgejo<->GitHub mirror, and a mirror push to `main` is
+#     indistinguishable from a human one.
+#   * the gate FAILS CLOSED on a tag when the switch is unreachable. A release
+#     blocked by an outage is recoverable; one published twice from two forges
+#     is not, because a PyPI version can be yanked but never reused.
+#   * the gate is a SEPARATE JOB because `if:` on a job cannot reference a step
+#     in that same job, and the consumer reads it via `needs.gate.outputs`.
+#   * a non-tag build's suffix is a PEP 440 LOCAL VERSION SEGMENT (`+gh`), which
+#     PyPI rejects outright at the tool. The tag condition is the control; this
+#     is the backstop for the day someone edits the condition. A dev build
+#     should not merely be unpublished, it should be unpublishABLE.
+#   * `.dev` sorts BELOW the release it derives from, so 0.0.1.dev123+gh
+#     precedes 0.0.1 rather than shadowing it.
+#   * the platform tag `+gh` is not decoration: run IDs are not unique across
+#     forges. GitHub's is an 11-digit global counter, Forgejo's a per-repo index
+#     that restarts if the instance is rebuilt. Without it the two collide.
+#   * `--skip-existing`, so a re-run of a tag build is a no-op rather than a
+#     hard failure on "File already exists", which reads like a broken release.
+#
+# There is deliberately no docs-publishing step. dvkit.org owns the published
+# documentation; the docs BUILD below stays, as a CI check.
+
 name: CI
 
 on:
   push:
-    branches: [main]
+    branches: ['**']
+    tags: ['v*']
   pull_request:
   workflow_dispatch:
 
 jobs:
   test:
     runs-on: ubuntu-latest
+    # Outer failsafe. The suite runs in about a minute, so a job still going at
+    # 20 means something is hung; fail fast rather than burning the 6h default.
+    timeout-minutes: 20
     strategy:
       fail-fast: false
       matrix:
-        # The floor is pinned because `requires-python` claims it. A claim no
-        # job checks is a claim that quietly stops being true. 3.10 is the real
-        # floor: dv-flow-mgr evaluates PEP 604 annotations at import time.
+        # The floor is pinned because `requires-python` claims it, and a claim
+        # no job checks is a claim that quietly stops being true. 3.10 is the
+        # real floor: dv-flow-mgr evaluates PEP 604 annotations at import time.
         python-version: ["3.10", "3.12"]
 
     steps:
       - uses: actions/checkout@v4
-        with:
-          # setuptools-scm derives the version from tags.
-          fetch-depth: 0
 
       - uses: actions/setup-python@v5
         with:
@@ -42,3 +94,121 @@ jobs:
         # -W because these docs are the acceptance test for the directives the
         # extension ships: a warning here means a directive is not finished.
         run: ./packages/python/bin/sphinx-build -W -b html docs docs/_build/html
+
+  gate:
+    # Release master switch. ONE file, above both forges, decides who releases
+    # each repo. Generated from sync-policy.toml by `git-sync
+    # emit-release-authority`, so GitHub and Forgejo have no separate copy to
+    # disagree about. The runner only READS it, over plain HTTPS with no
+    # credential -- a workflow file is public and editable by anyone who can push.
+    name: Release authority
+    runs-on: ubuntu-latest
+    outputs:
+      authority: ${{ steps.resolve.outputs.authority }}
+    steps:
+      - id: resolve
+        # One line on purpose: a multi-line `python3 -c` has to start at column
+        # 0, which terminates the YAML block scalar and silently corrupts the
+        # workflow.
+        run: |
+          url=https://dvkit.org/.well-known/release-authority.json
+          if ! body=$(curl -fsS --max-time 10 "$url"); then
+            case "$GITHUB_REF" in
+              refs/tags/v*)
+                echo "::error::release-authority switch unreachable; refusing to publish"
+                exit 1 ;;
+              *)
+                echo "authority=none" >> "$GITHUB_OUTPUT"
+                echo "switch unreachable on a non-tag ref; nothing to release"
+                exit 0 ;;
+            esac
+          fi
+          auth=$(printf '%s' "$body" | python3 -c 'import json,os,sys; d=json.load(sys.stdin); r=os.environ["GITHUB_REPOSITORY"]; print(d["repos"].get(r) or d["orgs"].get(r.split("/")[0]) or d["default"])')
+          echo "release authority for $GITHUB_REPOSITORY: $auth"
+          echo "authority=$auth" >> "$GITHUB_OUTPUT"
+
+  build:
+    needs: [test, gate]
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Set the build version
+        shell: bash
+        run: |
+          set -euo pipefail
+          version=$(python3 -c 'import re,pathlib; print(re.search(r"^VERSION = \"([^\"]+)\"", pathlib.Path("src/dv_flow/doc/__version__.py").read_text(), re.M).group(1))')
+          echo "source declares version ${version}"
+
+          case "$GITHUB_REF" in
+            refs/tags/v*)
+              # The tag is the release's name, so it has to agree with what the
+              # source says the release IS. The shared workflow derives the
+              # version from the file and never looks at the tag's value, so
+              # tagging v0.2.0 against a 0.0.1 source there publishes 0.0.1
+              # under a tag that claims otherwise -- and the tag cannot be
+              # meaningfully moved once the artifact is on PyPI.
+              tag="${GITHUB_REF#refs/tags/v}"
+              if [ "$tag" != "$version" ]; then
+                echo "::error::tag v${tag} does not match VERSION ${version} in src/dv_flow/doc/__version__.py"
+                exit 1
+              fi
+              echo "Configuring a full release: ${version}"
+              suffix="" ;;
+            *)
+              echo "Configuring a development build (not publishable)"
+              suffix=".dev${GITHUB_RUN_ID}+gh" ;;
+          esac
+
+          f=src/dv_flow/doc/__version__.py
+          # Only SUFFIX is rewritten: VERSION is the source of truth and
+          # pyproject.toml reads it, so there is no second literal to stamp.
+          # `grep -q` first because `sed` succeeds on a pattern that matches
+          # nothing, which is the exact failure this repo's layout exists to
+          # avoid -- a green build that stamped nothing.
+          grep -qE '^SUFFIX = "' "$f" || { echo "::error::$f has no top-level SUFFIX = \"...\" to stamp"; exit 1; }
+          sed -i -e "s%^SUFFIX = \".*\"%SUFFIX = \"${suffix}\"%" "$f"
+          echo "building ${version}${suffix}"
+
+      - name: Build packages
+        run: |
+          python3 -m pip install -U build
+          python3 -m build .
+
+      - name: The built artifact must carry the stamped version
+        # The check the shared workflow's silent `sed` cannot make: that the
+        # distribution metadata and the importable module agree, verified on
+        # the artifact rather than on the source it was meant to come from.
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -m pip install -U packaging
+          expect=$(python3 -c 'import re,pathlib; t=pathlib.Path("src/dv_flow/doc/__version__.py").read_text(); g=lambda k: re.search(r"^%s = \"([^\"]*)\"" % k, t, re.M).group(1); print(g("VERSION")+g("SUFFIX"))')
+          from_pkg=$(python3 -c 'import sys; from packaging.utils import parse_wheel_filename as p; import glob; print(str(p(glob.glob("dist/*.whl")[0].split("/")[-1])[1]))')
+          echo "module: ${expect}   wheel: ${from_pkg}"
+          [ "$expect" = "$from_pkg" ] || { echo "::error::version mismatch between module and built wheel"; exit 1; }
+
+      - name: Publish to PyPI
+        # A TAG, and the switch naming THIS forge. A push to a branch never
+        # releases anything -- that is what makes the 5-minute mirror safe.
+        #
+        # SKIPS rather than fails when the switch names Forgejo: a red build on
+        # the dormant side every time anyone tags would train people to ignore
+        # the signal, which is worse than no signal.
+        if: ${{ startsWith(github.ref, 'refs/tags/v') && needs.gate.outputs.authority == 'github' }}
+        env:
+          TWINE_USERNAME: __token__
+          TWINE_PASSWORD: ${{ secrets.PYPI_API_TOKEN }}
+        run: |
+          if [ -z "$TWINE_PASSWORD" ]; then
+            echo "::error::PYPI_API_TOKEN is not visible to this repository"
+            exit 1
+          fi
+          python3 -m pip install -U twine
+          python3 -m twine check dist/*
+          python3 -m twine upload --non-interactive --skip-existing dist/*

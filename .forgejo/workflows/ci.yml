@@ -1,0 +1,132 @@
+# dv-flow/sphinx-dv-flow -- Forgejo Actions.
+#
+# THIS FILE'S FIRST JOB IS TO EXIST. When .forgejo/workflows/ is absent the
+# Forgejo runner falls back to running .github/workflows/ -- measured on this
+# instance, not assumed. That file's release job reads the release-authority
+# switch, publishes on `refs/tags/v*`, and stamps a version; running it here
+# means a second forge executing this repo's release path, on the same tags,
+# with `github.run_id` values that are a per-repo counter rather than GitHub's
+# global one. Existing is what stops it trying.
+#
+# WHY THIS IS A CHECK AND NOT A MIRROR OF THE BUILD. The real build assembles
+# its environment with `ivpm update -a`, which clones dv-flow-mgr and its
+# dependencies over the network. Reproducing that here would make every push
+# depend on github.com being reachable, in order to test nothing this repo
+# controls. So this job checks only things that are true or false in the
+# checkout itself.
+#
+# THERE IS DELIBERATELY NO PUBLISH JOB. release-authority.json resolves
+# dv-flow/sphinx-dv-flow to `github` (via its `default`), and PYPI_API_TOKEN is
+# a GitHub org secret. Both agree, and this file must not be the thing that
+# makes them disagree.
+
+name: CI
+
+on:
+  push:
+    branches: ['**']
+    tags: ['v*']
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check for internal identifiers in tracked files
+        # This repo is published to git.dvkit.org and mirrored to GitHub, so
+        # anything committed here is public. Its `origin` remote is an internal
+        # tailnet host, which makes this a live hazard rather than a
+        # hypothetical one: any file that records the clone URL leaks it. If a
+        # build ever needs such a name it belongs in a repository secret, which
+        # is masked in logs.
+        run: |
+          pattern='perch-char\.ts\.net|\.ts\.net|a9550|100\.(6[4-9]|[7-9][0-9]|1[01][0-9]|12[0-7])\.[0-9]+\.[0-9]+'
+          if git grep -nIE "$pattern" -- . ':!.forgejo/workflows/ci.yml' ; then
+            echo "::error::internal identifier found in a tracked file (see matches above)"
+            exit 1
+          fi
+          echo "OK: no internal identifiers in tracked files"
+
+      - name: The version stamp must have something to bite on
+        # THE POINT OF THIS CHECK. `sed` does not fail when its pattern matches
+        # nothing. The release job in .github/workflows/ci.yml rewrites SUFFIX
+        # in src/dv_flow/doc/__version__.py by regex, so renaming the constant
+        # or moving the file produces a green build that stamped nothing -- and
+        # the damage (an unpublishable dev suffix silently omitted, or a release
+        # built from a stale number) shows up only on PyPI.
+        #
+        # The release job guards its own `sed` with a `grep -q`, so the stamp
+        # itself now fails loudly. This check is the earlier signal: it fires on
+        # the commit that breaks the contract instead of on the next tag.
+        run: |
+          set -eu
+          f=src/dv_flow/doc/__version__.py
+          rc=0
+
+          if [ ! -f "$f" ]; then
+            echo "::error::$f does not exist; the release job stamps into it"
+            exit 1
+          fi
+
+          for k in VERSION SUFFIX; do
+            if grep -qE "^${k} = \"" "$f"; then
+              echo "OK: $f carries a top-level ${k} = \"...\""
+            else
+              echo "::error::$f has no top-level ${k} = \"...\"; the release job's sed would match nothing"
+              rc=1
+            fi
+          done
+
+          # The release job locates the file by path. Nothing in Python breaks
+          # if it moves, so only this comparison notices.
+          if grep -qF "$f" .github/workflows/ci.yml; then
+            echo "OK: .github/workflows/ci.yml stamps $f"
+          else
+            echo "::error::.github/workflows/ci.yml no longer references $f"
+            rc=1
+          fi
+
+          exit $rc
+
+      - name: There is exactly one copy of the version
+        # A literal version in pyproject.toml alongside the one in Python is the
+        # arrangement that lets `pip show` and `import` disagree. This repo
+        # avoids it by declaring the version dynamic; the check is that it stays
+        # that way, because adding `version = "..."` back is a one-line edit
+        # that nothing else would flag.
+        run: |
+          set -eu
+          rc=0
+          if grep -qE '^\s*dynamic\s*=.*"version"' pyproject.toml; then
+            echo "OK: pyproject.toml declares the version dynamic"
+          else
+            echo "::error::pyproject.toml no longer declares dynamic = [\"version\"]"
+            rc=1
+          fi
+          if grep -qE '^\s*version\s*=\s*\{\s*attr' pyproject.toml; then
+            echo "OK: pyproject.toml reads the version from a module attribute"
+          else
+            echo "::error::pyproject.toml has no [tool.setuptools.dynamic] version = {attr = ...}"
+            rc=1
+          fi
+          if grep -qE '^\s*version\s*=\s*"' pyproject.toml; then
+            echo "::error::pyproject.toml carries a literal version; that is a second copy that can drift"
+            rc=1
+          fi
+          exit $rc
+
+      - name: The namespace package must stay implicit
+        # `dv_flow` is a PEP 420 namespace shared with dv-flow-mgr. An
+        # __init__.py here does not fail to import -- it shadows the sibling
+        # distribution's half of the namespace, so `import dv_flow.mgr` stops
+        # working wherever both are installed. That is invisible in this repo's
+        # own test suite, which is why it is checked rather than tested.
+        run: |
+          if [ -e src/dv_flow/__init__.py ]; then
+            echo "::error::src/dv_flow/__init__.py exists; dv_flow must remain an implicit namespace package"
+            exit 1
+          fi
+          echo "OK: dv_flow has no __init__.py"

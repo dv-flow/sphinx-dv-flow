@@ -1,5 +1,11 @@
 [build-system]
-requires = ["setuptools>=64", "setuptools-scm>=8"]
+# No setuptools-scm. The version comes from `src/dv_flow/doc/__version__.py`,
+# which is a file CI can stamp and a checkout can read without tags. scm derives
+# it from `git describe`, which means a shallow clone, an exported tarball, or a
+# repository whose tags have not been fetched all build a package silently
+# versioned 0.1.dev1 -- and this repo's Forgejo origin and GitHub mirror do not
+# necessarily carry the same tags.
+requires = ["setuptools>=64"]
 build-backend = "setuptools.build_meta"
 
 [project]
@@ -23,15 +29,33 @@ dependencies = [
     "sphinx>=7",
 ]
 
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Framework :: Sphinx :: Extension",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: Apache Software License",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Documentation :: Sphinx",
+    "Topic :: Software Development :: Documentation",
+]
+
 [project.optional-dependencies]
 graphviz = ["graphviz"]
+# `myst-parser` is what makes `dvflow_doc_format = "markdown"` handle general
+# Markdown. Without it the extension falls back to a deliberately small
+# conversion, so this is an upgrade rather than a requirement -- which is why it
+# is an extra and not a dependency.
+markdown = ["myst-parser"]
 test = ["pytest"]
 docs = ["furo", "sphinxcontrib-mermaid"]
 
 [project.scripts]
 dvflow-doc = "dv_flow.doc.cli:main"
 
-[tool.setuptools_scm]
+[tool.setuptools.dynamic]
+version = {attr = "dv_flow.doc.__version__._pkg_version"}
 
 [tool.setuptools.packages.find]
 where = ["src"]

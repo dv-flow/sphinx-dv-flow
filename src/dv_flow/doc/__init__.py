@@ -20,11 +20,8 @@ __all__ = [
     "__version__",
 ]
 
-try:
-    from importlib.metadata import PackageNotFoundError, version as _version
-    try:
-        __version__ = _version("sphinx-dv-flow")
-    except PackageNotFoundError:  # running from a source tree, not installed
-        __version__ = "0.0.0.dev0"
-except ImportError:  # pragma: no cover - Python <3.8
-    __version__ = "0.0.0.dev0"
+# From the source file rather than from installed metadata: the tests, the
+# consistency layer and `dvflow-doc --version` all run against a checkout that
+# was never `pip install`ed, where `importlib.metadata` reports either a stale
+# version from a previous install or nothing at all. See `__version__.py`.
+from .__version__ import __version__
