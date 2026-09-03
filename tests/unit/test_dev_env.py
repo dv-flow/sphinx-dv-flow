@@ -82,3 +82,38 @@ def test_ci_runs_the_command_the_docs_document():
 def _read(path):
     with open(path, encoding="utf-8") as fp:
         return fp.read()
+
+
+def test_conf_py_points_at_no_untracked_directory():
+    """`html_static_path` / `templates_path` must name paths a checkout has.
+
+    Git does not track an empty directory. `docs/_static` therefore existed in
+    every working tree and in no clean checkout, and Sphinx warned
+    "html_static_path entry '_static' does not exist" -- an error under -W,
+    which is how the first Forgejo docs build failed after passing everywhere it
+    had been tried locally.
+
+    It also survived a "clean checkout" test, because that test copied the tree
+    with `rsync`, which preserves empty directories where `git clone` cannot.
+    Hence a check on the declaration rather than another attempt to reproduce
+    the environment.
+    """
+    import subprocess
+
+    conf = _read(os.path.join(_ROOT, "docs", "conf.py"))
+
+    for setting in ("html_static_path", "templates_path"):
+        for match in re.finditer(
+                r'^\s*%s\s*=\s*\[([^\]]*)\]' % setting, conf, re.M):
+            for entry in re.findall(r'["\']([^"\']+)["\']', match.group(1)):
+                path = os.path.join(_ROOT, "docs", entry)
+                tracked = subprocess.run(
+                    ["git", "ls-files", "--", os.path.join("docs", entry)],
+                    cwd=_ROOT, capture_output=True, text=True).stdout.strip()
+                assert tracked, (
+                    "docs/conf.py sets %s = [... %r ...], but git tracks no "
+                    "file under docs/%s. It exists in this working tree and "
+                    "will not exist in a fresh clone, where Sphinx warns and "
+                    "-W turns that into a failed build." % (
+                        setting, entry, entry))
+                assert os.path.isdir(path), path

@@ -21,7 +21,16 @@ extensions = [
     "sphinx_dv_flow",
 ]
 
-templates_path = ["_templates"]
+# No `templates_path` / `html_static_path`. Both were sphinx-quickstart
+# boilerplate pointing at empty directories, and git does not track an empty
+# directory -- so `_static` existed in every working tree and in no clean
+# checkout, and Sphinx warned "html_static_path entry '_static' does not exist".
+# Under -W that warning is an error, which is how it took down the first docs
+# build on the Forgejo runner while passing everywhere it had been tried.
+#
+# Removed rather than papered over with a .gitkeep: a setting that points at an
+# empty directory does nothing except fail on a fresh checkout. Add it back
+# alongside the first real asset.
 exclude_patterns = ["_build", "Thumbs.db", ".DS_Store"]
 
 # Every reference these pages generate now resolves. M1 needed a
@@ -47,4 +56,3 @@ nitpicky = True
 dvflow_intersphinx_packages = ["std"]
 
 html_theme = "furo"
-html_static_path = ["_static"]
