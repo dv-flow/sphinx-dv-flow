@@ -27,6 +27,9 @@ import re
 import textwrap
 
 from docutils.statemachine import StringList
+from sphinx.util import logging
+
+logger = logging.getLogger(__name__)
 
 #: Formats `dvflow_doc_format` accepts.
 FORMATS = ('rst', 'markdown', 'plain')
@@ -195,32 +198,57 @@ def parse_doc(text, state, source=None, line=0, format=None):
 
 
 def _parse_markdown(text, state, source=None, line=0):
-    """Markdown via myst-parser, or None to fall through to the conversion."""
-    try:
-        from myst_parser.parsers.docutils_ import Parser  # noqa: F401
-    except ImportError:
+    """Markdown via myst-parser, falling back to :func:`markdown_to_rst`.
+
+    Never returns None. Markdown that myst cannot handle is handled by the
+    local conversion, which is a smaller parser -- never by the reStructuredText
+    parser, which reads a fenced code block as an indentation error and reports
+    it against prose the author wrote in a different language.
+    """
+    def _converted():
         converted = markdown_to_rst(text)
         children = _parse_rst(converted, state, source, line)
         return _plain_nodes(text, source, line) if _has_errors(children) \
             else children
 
+    try:
+        from myst_parser.parsers.sphinx_ import MystParser
+    except ImportError:
+        return _converted()
+
+    # INSTALLED IS NOT ENABLED. `MystParser.parse` reads its configuration from
+    # `env.myst_config`, which myst_parser's own `setup()` attaches -- so it is
+    # present only in a doc set that lists "myst_parser" in `extensions`. A
+    # project that has myst on the path (as a dependency of something else, or
+    # via this package's `markdown` extra) but has not enabled it used to reach
+    # `parser.parse`, raise AttributeError into a bare `except`, and fall
+    # through to the RST parser. The visible result was docutils errors pointing
+    # into a flow file, for Markdown that was perfectly well-formed.
+    env = getattr(state.document.settings, 'env', None)
+    if not hasattr(env, 'myst_config'):
+        return _converted()
+
     from docutils import nodes
 
     container = nodes.Element()
     try:
-        from myst_parser.mocking import MockState  # noqa: F401
-        # myst is installed: let Sphinx's own myst machinery parse the block,
-        # which handles the general case rather than the two constructs the
-        # local conversion knows about.
-        from myst_parser.parsers.sphinx_ import MystParser
-
         parser = MystParser()
         document = state.document.copy()
         parser.parse(text, document)
         container += document.children
         return container.children
-    except Exception:
-        return None
+    except Exception as e:
+        # Reached only when myst is enabled and still failed, which is a
+        # genuine surprise rather than a configuration the fallback covers.
+        # Said once, with the flow file as the location, and the prose is still
+        # rendered by the conversion below.
+        logger.warning(
+            "myst-parser could not parse a doc: field (%s: %s); "
+            "falling back to the built-in Markdown conversion",
+            type(e).__name__, e,
+            location=("%s:%d" % (source, line) if source and line else source),
+            type='dvflow', subtype='markdown')
+        return _converted()
 
 
 def first_paragraph(text):

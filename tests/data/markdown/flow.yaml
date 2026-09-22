@@ -1,0 +1,46 @@
+# Fixture: `doc:` prose written in Markdown.
+#
+# `dvflow_doc_format = "markdown"` is the setting most real flow files use --
+# `doc:` reaches `dfm show` and editor hovers as well as Sphinx, and none of
+# those render reStructuredText -- yet no fixture here was written in it, so
+# both implementations of the format went untested end to end.
+#
+# What each field is for:
+#
+#   fenced block  the construct that breaks: RST reads the indented body as an
+#                 unexpected indentation error, so it is how a build reveals
+#                 that it fell through to the wrong parser. It lives in the
+#                 TASK's `doc:`, because a bare `dvf:autopackage::` renders the
+#                 task prose and not the package's.
+#   inline code,  the ordinary constructs, which must survive both the myst
+#   list, bold    path and the built-in conversion.
+package:
+  name: markdown
+  desc: Prose written in Markdown rather than reStructuredText
+  doc: |
+    Fixture package whose `doc:` fields are Markdown.
+
+    ```yaml
+    - name: use-it
+      uses: markdown.run
+    ```
+
+  tasks:
+  - name: run
+    scope: root
+    desc: Run the thing
+    doc: |
+      Calls `run` with the **default** parameters.
+
+      - one
+      - two
+
+      ```yaml
+      - name: use-it
+        uses: markdown.run
+      ```
+    with:
+      mode:
+        type: str
+        value: normal
+        doc: How much output to produce.

@@ -29,6 +29,15 @@ package:
       src: pypi
     - name: sphinxcontrib-mermaid
       src: pypi
+    # The `markdown` extra, present here so CI runs the tests that need it.
+    # Without it `tests/build/test_markdown.py` skipped the myst-enabled case
+    # and the stdlib build took the fallback path -- so the PRIMARY
+    # implementation of `dvflow_doc_format = "markdown"` was exercised only on
+    # machines that happened to have myst installed for another reason. It is
+    # an optional dependency of the distribution and a required one for a
+    # complete test run; those are different questions.
+    - name: myst-parser
+      src: pypi
     - name: furo
       src: pypi
     - name: pytest
