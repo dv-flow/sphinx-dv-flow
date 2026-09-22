@@ -85,7 +85,8 @@ def test_setup_registers_the_config_values():
 
     names = {name for name, _, _ in app.config_values}
     assert names == {"dvflow_root", "dvflow_config", "dvflow_internal",
-                     "dvflow_show_source", "dvflow_diagram_depth",
+                     "dvflow_show_source", "dvflow_viewcode",
+                     "dvflow_diagram_depth",
                      "dvflow_diagram_max_nodes", "dvflow_diagram_dataflow",
                      "dvflow_diagram_backend", "dvflow_elaborate",
                      "dvflow_coverage", "dvflow_coverage_warn",

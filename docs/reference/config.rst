@@ -59,6 +59,27 @@ address one whatever the documentation says.
 
 Show the ``Defined in flow.yaml:NN`` line at the end of each object.
 
+``dvflow_viewcode``
+-------------------
+
+:Type: ``bool``
+:Default: ``True``
+
+Make that line a link to a generated, syntax-highlighted listing of the flow
+file, anchored at the declaration. Listings are written under ``_flow_source/``
+in the HTML output.
+
+Self-contained on purpose: there is no repository-URL setting to go with it.
+A flow file frequently does not live in the documentation's own repository --
+it may come from an installed distribution -- so a blob URL correct for one
+project's files is wrong for the next one's. A listing of the file the build
+actually read is correct in both cases, and it keeps the documentation
+buildable with no network and no knowledge of where the source is hosted.
+
+With this off, the ``Defined in`` line is still rendered; it is simply not a
+link. ``dvflow_show_source = False`` is what removes it entirely. Non-HTML
+builders degrade the same way, since there is no listing page to point at.
+
 ``dvflow_doc_format``
 ---------------------
 

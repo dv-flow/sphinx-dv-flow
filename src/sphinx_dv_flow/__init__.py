@@ -31,6 +31,7 @@ def setup(app):
     from .indices import ALL_INDICES
     from .coverage import report as coverage_report
     from .render.diagrams import resolve_diagrams
+    from . import viewcode
 
     setup_config(app)
     # Before Sphinx enumerates source files: the examples directory is included
@@ -83,6 +84,16 @@ def setup(app):
     # baking URLs in early would silently drop every forward link -- and would
     # do it differently depending on document order.
     app.connect('doctree-resolved', resolve_diagrams)
+
+    # Source links. Recorded during the read phase so a parallel read can merge
+    # the contributions, resolved at write time because the relative URI
+    # depends on the document being written, and the listing pages are
+    # generated once at the end.
+    app.connect('doctree-read', viewcode.record)
+    app.connect('env-merge-info', viewcode.merge_info)
+    app.connect('env-purge-doc', viewcode.purge)
+    app.connect('doctree-resolved', viewcode.resolve_links)
+    app.connect('html-collect-pages', viewcode.collect_pages)
 
     # Reported at the end, over what the build actually loaded. Off unless
     # `dvflow_coverage` is set -- see `coverage.py` for why it is neither on by

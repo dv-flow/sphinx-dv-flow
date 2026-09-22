@@ -321,5 +321,10 @@ def source(doc, base_dir=None):
     # sends a reader to the top of the file believing that is where to look.
     where = ("%s:%d" % (path, doc.srcinfo.line)) if doc.srcinfo.line else path
     para = nodes.paragraph(classes=['dvf-source'])
-    para += nodes.emphasis(text="Defined in %s" % where)
+    # Always a reference, even when viewcode is off or the builder is not HTML:
+    # rendering has no access to configuration, so the decision is made in
+    # `viewcode.resolve_links`, which unwraps the node back to this same text.
+    from ..viewcode import make_source_node
+    para += make_source_node("Defined in %s" % where,
+                             doc.srcinfo.file, doc.srcinfo.line)
     return [para]

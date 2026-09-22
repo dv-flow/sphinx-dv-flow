@@ -10,6 +10,11 @@ __pycache__/
 # Distribution / packaging
 .Python
 build/
+# ... but NOT the Sphinx-build test layer. `build/` from the stock Python
+# template swallows `tests/build/`, so those tests are untracked and a commit
+# that adds one silently drops it -- the same tests `pytest.ini` had to
+# un-exclude from pytest's own `norecursedirs` for the same reason.
+!tests/build/
 develop-eggs/
 dist/
 downloads/

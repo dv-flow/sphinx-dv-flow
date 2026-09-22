@@ -20,6 +20,13 @@ def setup_config(app):
     app.add_config_value('dvflow_config', None, 'env')
     app.add_config_value('dvflow_internal', False, 'env')
     app.add_config_value('dvflow_show_source', True, 'env')
+    # Turn that `Defined in flow.yaml:NN` line into a link to a generated
+    # listing of the file. On by default for the same reason `viewcode` is in
+    # most doc sets: the generated reference states a fact about a declaration,
+    # and the declaration is the one thing a reader may want to check it
+    # against. Self-contained -- see `viewcode.py` for why there is no
+    # repository-URL setting to go with it.
+    app.add_config_value('dvflow_viewcode', True, 'env')
     # How `doc:` prose is interpreted (design §8). `doc:` is not read only by
     # Sphinx -- the same string reaches `dfm show`, `dfm llms` and editor
     # hovers, none of which render reStructuredText -- so flow-file prose is
