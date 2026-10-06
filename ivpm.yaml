@@ -21,14 +21,15 @@ package:
   # It stays first in the file, so `default-dep-set` above is what keeps it from
   # being chosen by accident.
   - name: use
-    deps: []
-
-  - name: dev
-    deps:
+    deps: 
     - name: sphinx
       src: pypi
     - name: sphinxcontrib-mermaid
       src: pypi
+
+  - name: dev
+    uses: use
+    deps:
     # The `markdown` extra, present here so CI runs the tests that need it.
     # Without it `tests/build/test_markdown.py` skipped the myst-enabled case
     # and the stdlib build took the fallback path -- so the PRIMARY
